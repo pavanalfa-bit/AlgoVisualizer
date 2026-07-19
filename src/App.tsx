@@ -21,7 +21,7 @@ function App() {
   return (
     <div>
       <header>
-        <h1><Sparkles size={24} /> DSA Visualizer</h1>
+        <h1><Sparkles size={24} /> AlgoVisualizer</h1>
         <button className="theme-toggle-btn" onClick={toggleTheme}>
           {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           {theme === 'dark' ? 'Light' : 'Dark'} Mode
