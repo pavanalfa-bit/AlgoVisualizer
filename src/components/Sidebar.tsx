@@ -48,24 +48,6 @@ export function Sidebar({ activeCategory, setActiveCategory }: SidebarProps) {
         </a>
       ))}
 
-      <div className="section-label" style={{ marginTop: '16px' }}>Reference</div>
-      <a href="#patterns"><Target size={16} /> Common Patterns <span className="count">43</span></a>
-      <a href="#iq" className="iq-nav-link"><MessageSquare size={16} /> Interview Questions <span className="focus-nav-new">New</span></a>
-      <a href="#sd" className="sd-nav-link"><Monitor size={16} /> System Design <span className="focus-nav-new">New</span></a>
-      <a href="#tricks"><Zap size={16} /> Code Tricks</a>
-      <a href="#edge"><Lightbulb size={16} /> Edge Cases</a>
-      <a href="#jobs" className="jobs-nav-link"><Briefcase size={16} /> Jobs <span className="focus-nav-new">New</span></a>
-      <a href="#mock" className="mi-nav-link"><Mic size={16} /> Mock Interview <span className="focus-nav-new">New</span></a>
-
-      <div className="section-label" style={{ marginTop: '16px' }}>Apps</div>
-      <a href="#java" className="java-nav-link"><GraduationCap size={16} /> AI-Powered Java Backend <span className="focus-nav-new">New</span></a>
-      <a href="#quiz" className="quiz-nav-link"><Target size={16} /> Pattern Quiz</a>
-      <a href="#focus" className="focus-nav-link"><Crosshair size={16} /> Focus <span className="focus-nav-new">New</span></a>
-
-      <div className="section-label" style={{ marginTop: '16px' }}>Support</div>
-      <a href="#contact"><Phone size={16} /> Contact Us</a>
-      <a href="#refund"><ScrollText size={16} /> Refund Policy</a>
-      <a href="#feedback"><MessageCircle size={16} /> Feedback</a>
     </nav>
   );
 }
