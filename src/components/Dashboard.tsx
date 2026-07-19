@@ -7,7 +7,7 @@ interface DashboardProps {
 }
 
 // Full problem list parsed from the provided HTML
-const allProblems = [
+export const allProblems = [
   // ARRAYS - Basics
   { id: '1929', num: 1929, title: 'Concatenation of Array', difficulty: 'easy' as const, category: 'arrays', subtopic: 'Basics' },
   { id: '1480', num: 1480, title: 'Running Sum of 1D Array', difficulty: 'easy' as const, category: 'arrays', subtopic: 'Basics' },

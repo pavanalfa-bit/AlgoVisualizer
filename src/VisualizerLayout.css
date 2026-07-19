@@ -442,3 +442,27 @@
 .ptr-cell.yellow { color: #facc15; }
 .ptr-cell.pink { color: #f472b6; }
 .ptr-cell.sky { color: #38bdf8; }
+
+/* Mobile Responsiveness */
+@media (max-width: 900px) {
+  .vp-body {
+    flex-direction: column;
+    margin: 12px;
+  }
+  .vp-right {
+    width: 100%;
+  }
+  .vp-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+  }
+  .vp-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .state-grid {
+    flex-wrap: wrap;
+  }
+}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Package, Type, Grid, Layers, Repeat, Search, Link2, Lightbulb, Calendar, GitBranch, TreePine, Pickaxe, Network, Target, Zap, Globe, Cuboid, MessageSquare, Monitor, Briefcase, Mic, GraduationCap, Crosshair, Phone, ScrollText, MessageCircle } from 'lucide-react';
+import { allProblems } from './Dashboard';
 
 interface SidebarProps {
   activeCategory: string;
@@ -8,24 +9,27 @@ interface SidebarProps {
 
 export function Sidebar({ activeCategory, setActiveCategory }: SidebarProps) {
   const categories = [
-    { id: 'arrays', label: 'Arrays', count: 18, icon: <Package size={16} /> },
-    { id: 'strings', label: 'Strings', count: 17, icon: <Type size={16} /> },
-    { id: 'matrix', label: 'Matrix', count: 9, icon: <Grid size={16} /> },
-    { id: 'stack', label: 'Stack', count: 8, icon: <Layers size={16} /> },
-    { id: 'queue', label: 'Queue', count: 1, icon: <Repeat size={16} /> },
-    { id: 'binarysearch', label: 'Binary Search', count: 13, icon: <Search size={16} /> },
-    { id: 'linkedlist', label: 'Linked List', count: 13, icon: <Link2 size={16} /> },
-    { id: 'greedy', label: 'Greedy', count: 5, icon: <Lightbulb size={16} /> },
-    { id: 'intervals', label: 'Intervals', count: 5, icon: <Calendar size={16} /> },
-    { id: 'backtracking', label: 'Backtracking', count: 9, icon: <GitBranch size={16} /> },
-    { id: 'tree', label: 'Tree', count: 20, icon: <TreePine size={16} /> },
-    { id: 'heap', label: 'Heap', count: 6, icon: <Pickaxe size={16} /> },
-    { id: 'graph', label: 'Graph', count: 11, icon: <Network size={16} /> },
-    { id: 'dp', label: 'Dynamic Prog.', count: 15, icon: <Target size={16} /> },
-    { id: 'bitmanipulation', label: 'Bit Manip.', count: 8, icon: <Zap size={16} /> },
-    { id: 'trie', label: 'Trie', count: 2, icon: <Globe size={16} /> },
-    { id: 'design', label: 'Design', count: 1, icon: <Cuboid size={16} /> },
-  ];
+    { id: 'arrays', label: 'Arrays', icon: <Package size={16} /> },
+    { id: 'strings', label: 'Strings', icon: <Type size={16} /> },
+    { id: 'matrix', label: 'Matrix', icon: <Grid size={16} /> },
+    { id: 'stack', label: 'Stack', icon: <Layers size={16} /> },
+    { id: 'queue', label: 'Queue', icon: <Repeat size={16} /> },
+    { id: 'binarysearch', label: 'Binary Search', icon: <Search size={16} /> },
+    { id: 'linkedlist', label: 'Linked List', icon: <Link2 size={16} /> },
+    { id: 'greedy', label: 'Greedy', icon: <Lightbulb size={16} /> },
+    { id: 'intervals', label: 'Intervals', icon: <Calendar size={16} /> },
+    { id: 'backtracking', label: 'Backtracking', icon: <GitBranch size={16} /> },
+    { id: 'tree', label: 'Tree', icon: <TreePine size={16} /> },
+    { id: 'heap', label: 'Heap', icon: <Pickaxe size={16} /> },
+    { id: 'graph', label: 'Graph', icon: <Network size={16} /> },
+    { id: 'dp', label: 'Dynamic Prog.', icon: <Target size={16} /> },
+    { id: 'bitmanipulation', label: 'Bit Manip.', icon: <Zap size={16} /> },
+    { id: 'trie', label: 'Trie', icon: <Globe size={16} /> },
+    { id: 'design', label: 'Design', icon: <Cuboid size={16} /> },
+  ].map(cat => ({
+    ...cat,
+    count: allProblems.filter(p => p.category === cat.id).length
+  }));
 
   return (
     <nav id="sidebar">

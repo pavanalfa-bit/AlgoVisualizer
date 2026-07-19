@@ -505,3 +505,47 @@ main {
 .back-btn:hover {
   color: var(--accent);
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+  
+  nav#sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    position: static;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    white-space: nowrap;
+    z-index: 90;
+  }
+  
+  nav#sidebar .section-label {
+    display: none;
+  }
+
+  nav#sidebar a {
+    display: inline-flex;
+    margin-right: 12px;
+  }
+
+  main {
+    padding: 12px;
+    height: auto;
+  }
+  
+  .problem-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  header h1 {
+    font-size: 1.1rem;
+  }
+}
