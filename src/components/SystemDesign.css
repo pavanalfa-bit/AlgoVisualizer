@@ -1,0 +1,185 @@
+
+.sd-page {
+  padding: 40px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.sd-hero {
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.sd-hero-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.sd-hero-subtitle {
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.sd-welcome-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.glassmorphism {
+  background: rgba(30, 32, 38, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+html[data-theme='light'] .glassmorphism {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+}
+
+.glassmorphism:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+html[data-theme='light'] .glassmorphism:hover {
+  box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.sd-welcome-card-h {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.sd-welcome-card-ico {
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.sd-welcome-card-t {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+
+.sd-welcome-card-cnt {
+  background: var(--surface2);
+  color: var(--muted);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.sd-welcome-card-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.sd-welcome-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sd-welcome-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface2);
+  border: 1px solid transparent;
+  padding: 12px 16px;
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pill-ico {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.pill-t {
+  flex: 1;
+  font-weight: 500;
+}
+
+.sd-welcome-pill:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateX(4px);
+}
+
+html[data-theme='light'] .sd-welcome-pill:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.sd-welcome-pill:hover .pill-ico {
+  color: var(--accent);
+}
+
+.sd-priority-chip {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sd-prio-must-know {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+.sd-prio-important {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.sd-prio-advanced {
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+}
+
+.sd-prio-specialized {
+  background: rgba(139, 92, 246, 0.1);
+  color: #a78bfa;
+}
+
+.sd-prio-optional {
+  background: rgba(156, 163, 175, 0.1);
+  color: #9ca3af;
+}

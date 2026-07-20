@@ -48,6 +48,17 @@ export function Sidebar({ activeCategory, setActiveCategory }: SidebarProps) {
         </a>
       ))}
 
+      <div className="section-label" style={{ marginTop: '16px' }}>Interview Prep</div>
+      <a
+        href="#system-design"
+        className={activeCategory === 'system-design' ? 'active' : 'sd-nav-link'}
+        onClick={(e) => {
+          e.preventDefault();
+          setActiveCategory('system-design');
+        }}
+      >
+        <Monitor size={16} /> System Design <span className="focus-nav-new">New</span>
+      </a>
     </nav>
   );
 }

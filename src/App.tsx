@@ -3,6 +3,7 @@ import { Sun, Moon, Sparkles } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Visualizer } from './components/Visualizer';
+import { SystemDesign } from './components/SystemDesign';
 import './index.css';
 
 function App() {
@@ -36,6 +37,8 @@ function App() {
         
         {activeProblem ? (
           <Visualizer problemId={activeProblem} onBack={() => setActiveProblem(null)} />
+        ) : activeCategory === 'system-design' ? (
+          <SystemDesign />
         ) : (
           <Dashboard category={activeCategory} onVisualize={setActiveProblem} />
         )}
