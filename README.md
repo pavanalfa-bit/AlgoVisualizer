@@ -22,6 +22,7 @@ Whether you are mastering the sliding window technique, understanding Graph Trav
 ## ✨ Features
 
 - **🧠 Algorithm Visualizations:** Step-by-step visual execution of popular algorithms (Arrays, Strings, Matrices, Binary Search, Dynamic Programming, and more).
+  > **Note:** We are actively expanding our DSA library! Problems for Linked Lists, Trees, Graphs, Greedy, and DP are currently being added.
 - **🏛️ System Design Hub:** A premium, glassmorphism-styled learning track covering LLD, Concurrency, Networking, Databases, and Architecture Styles.
 - **🌗 Seamless Theming:** Beautifully designed Dark Mode and Light Mode with consistent accessibility and contrast standard adherence.
 - **📱 Responsive UI:** Fully responsive design that works flawlessly on massive 4K monitors and mobile phones.
