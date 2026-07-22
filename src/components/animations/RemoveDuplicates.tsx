@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, ResultBanner, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -34,6 +34,63 @@ const EXAMPLES = [
   }
 ];
 
+const EDGE_CASES = [
+  "nums = [1,1,1,1,1]",
+  "nums = [1,2,3,4,5]",
+  "nums = [-100,-100,0,0,100,100]",
+  "nums = [1]"
+];
+
+const generateTimeline = (arr: number[]) => {
+  const timeline: any[] = [];
+  const nums = [...arr];
+  let i = 0;
+  
+  if (nums.length === 0) return timeline;
+
+  timeline.push({
+    nums: [...nums], i, j: 1,
+    desc: "Initialize slow pointer `i = 0`. Fast pointer `j` starts at 1 to scan the array.",
+    activeLines: [2, 3],
+    logic: '<strong>Init:</strong> Set `i = 0` (write pointer) and `j = 1` (read pointer).', logicClass: 'info', activeStep: 1
+  });
+
+  for (let j = 1; j < nums.length; j++) {
+    if (nums[j] == nums[i]) {
+      timeline.push({
+        nums: [...nums], i, j,
+        desc: `Compare nums[j] (${nums[j]}) and nums[i] (${nums[i]}). They are equal, so it's a duplicate. Just increment j.`,
+        activeLines: [4, 8],
+        logic: `nums[j] == nums[i] (<strong style="color:var(--yellow)">${nums[j]}</strong> == <strong style="color:var(--red)">${nums[i]}</strong>).<br/>Duplicate found! Skip it by incrementing \`j\`.`, logicClass: 'info', activeStep: 2
+      });
+    } else {
+      timeline.push({
+        nums: [...nums], i, j,
+        desc: `Compare nums[j] (${nums[j]}) and nums[i] (${nums[i]}). They are different! A new unique element is found.`,
+        activeLines: [4, 5],
+        logic: `nums[j] != nums[i] (<strong style="color:var(--yellow)">${nums[j]}</strong> != <strong style="color:var(--red)">${nums[i]}</strong>).<br/>Found a new unique element!`, logicClass: 'success', activeStep: 3
+      });
+      i++;
+      nums[i] = nums[j];
+      timeline.push({
+        nums: [...nums], i, j,
+        desc: `Increment i, and copy nums[j] to nums[i]. nums[${i}] becomes ${nums[i]}.`,
+        activeLines: [5, 6],
+        logic: `Increment \`i\` to ${i}, then write <strong style="color:var(--yellow)">${nums[i]}</strong> at index \`i\`.`, logicClass: 'info', activeStep: 3
+      });
+    }
+  }
+
+  timeline.push({
+    nums: [...nums], i, j: nums.length,
+    desc: `j reaches the end of the array. The loop terminates. The number of unique elements is i + 1 (${i + 1}).`,
+    activeLines: [9],
+    logic: `Array fully scanned.<br/><strong style="color:var(--green)">Done!</strong> Return \`i + 1\` = ${i + 1}.`, logicClass: 'success', activeStep: 4
+  });
+
+  return timeline;
+};
+
 const CONSTRAINTS = (
   <>
     <div><code>1 &lt;= nums.length &lt;= 3 * 10⁴</code></div>
@@ -53,47 +110,70 @@ const DEFAULT_PYTHON = `class Solution:\n    def removeDuplicates(self, nums) ->
 export default function RemoveDuplicates({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
   
-  const timeline = [
-    {
-      nums: [1, 1, 2], i: 0, j: 1,
-      desc: "Initialize slow pointer `i = 0`. Fast pointer `j` starts at 1 to scan the array.",
-      activeLines: [2, 3],
-      logic: '<strong>Init:</strong> Set `i = 0` (write pointer) and `j = 1` (read pointer).', logicClass: 'info', activeStep: 1
-    },
-    {
-      nums: [1, 1, 2], i: 0, j: 1,
-      desc: "Compare nums[j] (1) and nums[i] (1). They are equal, so it's a duplicate. Just increment j.",
-      activeLines: [4, 8],
-      logic: 'nums[j] == nums[i] (<strong style="color:var(--yellow)">1</strong> == <strong style="color:var(--red)">1</strong>).<br/>Duplicate found! Skip it by incrementing `j`.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [1, 1, 2], i: 0, j: 2,
-      desc: "j increments to 2.",
-      activeLines: [3],
-      logic: 'Moved read pointer `j` to index 2.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [1, 1, 2], i: 0, j: 2,
-      desc: "Compare nums[j] (2) and nums[i] (1). They are different! A new unique element is found.",
-      activeLines: [4, 5],
-      logic: 'nums[j] != nums[i] (<strong style="color:var(--yellow)">2</strong> != <strong style="color:var(--red)">1</strong>).<br/>Found a new unique element!', logicClass: 'success', activeStep: 3
-    },
-    {
-      nums: [1, 2, 2], i: 1, j: 2,
-      desc: "Increment i, and copy nums[j] to nums[i]. nums[1] becomes 2.",
-      activeLines: [5, 6],
-      logic: 'Increment `i` to 1, then write <strong style="color:var(--yellow)">2</strong> at index `i`.', logicClass: 'info', activeStep: 3
-    },
-    {
-      nums: [1, 2, 2], i: 1, j: 3,
-      desc: "j reaches the end of the array. The loop terminates. The number of unique elements is i + 1.",
-      activeLines: [9],
-      logic: 'Array fully scanned.<br/><strong style="color:var(--green)">Done!</strong> Return `i + 1` = 2.', logicClass: 'success', activeStep: 4
-    }
-  ];
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [nums, setNums] = useState([1,1,2]);
+  const [timeline, setTimeline] = useState(() => generateTimeline([1,1,2]));
 
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(timeline.length);
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
   const current = timeline[step];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      
+      const res = [...parsed];
+      let k = 0;
+      if (res.length > 0) {
+        let i = 0;
+        for (let j = 1; j < res.length; j++) {
+          if (res[j] !== res[i]) {
+            i++;
+            res[i] = res[j];
+          }
+        }
+        k = i + 1;
+      }
+
+      for (let i = k; i < res.length; i++) res[i] = '_' as any;
+
+      const newEx = {
+        label: formattedLabel,
+        nums: parsed,
+        input: formattedLabel,
+        output: `${k}, nums = [${res.join(',')}]`,
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [1,1,2]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        int k = removeDuplicates(nums);\n        System.out.println(k);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    nums = ${clean}\n    k = Solution().removeDuplicates(nums)\n    print(k)`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -101,10 +181,31 @@ export default function RemoveDuplicates({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Remove Duplicates from Sorted Array" lcNum="26" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const ex = examples[idx];
+                const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+                setNums(inputArr);
+                setTimeline(generateTimeline(inputArr));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -115,7 +216,24 @@ export default function RemoveDuplicates({ onBack }: { onBack?: () => void }) {
       <VPHeader title="Remove Duplicates from Sorted Array" lcNum="26" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            const ex = examples[idx];
+            const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+            setNums(inputArr);
+            setTimeline(generateTimeline(inputArr));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
@@ -170,7 +288,7 @@ export default function RemoveDuplicates({ onBack }: { onBack?: () => void }) {
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">j (fast pointer)</div>
-                  <div className="st-val">{current.j < 3 ? current.j : '—'}</div>
+                  <div className="st-val">{current.j < nums.length ? current.j : '—'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">nums[i]</div>
@@ -178,7 +296,7 @@ export default function RemoveDuplicates({ onBack }: { onBack?: () => void }) {
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">nums[j]</div>
-                  <div className="st-val">{current.j < 3 ? current.nums[current.j] : '—'}</div>
+                  <div className="st-val">{current.j < nums.length ? current.nums[current.j] : '—'}</div>
                 </div>
               </div>
             </div>

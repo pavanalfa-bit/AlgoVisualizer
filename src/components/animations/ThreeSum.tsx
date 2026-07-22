@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, ResultBanner, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -42,6 +42,105 @@ const EXAMPLES = [
   }
 ];
 
+const EDGE_CASES = [
+  "nums = [-2,0,0,2,2]",
+  "nums = [-1,0,1,2,-1,-4,-2,-3,3,0,4]",
+  "nums = [0,0,0,0]",
+  "nums = [1,2,-2,-1]"
+];
+
+const generateTimeline = (arr: number[]) => {
+  const timeline: any[] = [];
+  const orig = [...arr];
+  const nums = [...arr].sort((a, b) => a - b);
+  const n = nums.length;
+  const res: number[][] = [];
+  
+  if (n < 3) return timeline;
+
+  for (let i = 0; i < n - 2; i++) {
+    if (i > 0 && nums[i] === nums[i - 1]) {
+      timeline.push({
+        nums: [...nums], i, l: -1, r: -1, res: [...res],
+        desc: `i = ${i} (val = ${nums[i]}). This is the same as the previous 'i', so we skip it to avoid duplicate triplets.`,
+        activeLines: [4],
+        logic: `nums[i] == nums[i-1] (${nums[i]} == ${nums[i-1]}).<br/><strong style="color:var(--orange)">Duplicate element!</strong> Skip 'i' to avoid duplicate triplets.`, logicClass: 'warning', activeStep: 4
+      });
+      continue;
+    }
+    
+    let l = i + 1;
+    let r = n - 1;
+
+    timeline.push({
+      nums: [...nums], i, l, r, res: [...res],
+      desc: `For i = ${i} (val = ${nums[i]}), 'l' starts at ${l}, 'r' starts at ${r}.`,
+      activeLines: [3, 5, 6],
+      logic: `Fix 'i' at index ${i} (<strong style="color:var(--yellow)">${nums[i]}</strong>).<br/>Set 'l' to index ${l} and 'r' to ${r}.`, logicClass: 'info', activeStep: 1
+    });
+
+    while (l < r) {
+      const sum = nums[i] + nums[l] + nums[r];
+      if (sum === 0) {
+        res.push([nums[i], nums[l], nums[r]]);
+        timeline.push({
+          nums: [...nums], i, l, r, res: [...res],
+          desc: `Sum = ${nums[i]} + ${nums[l]} + ${nums[r]} = 0. Found a triplet! Add [${nums[i]}, ${nums[l]}, ${nums[r]}] to the result list.`,
+          activeLines: [8, 9],
+          logic: `Sum = ${nums[i]} + ${nums[l]} + ${nums[r]} = <strong>0</strong>.<br/><strong style="color:var(--green)">Triplet Found!</strong> Add to result.`, logicClass: 'success', activeStep: 3
+        });
+        
+        while (l < r && nums[l] === nums[l + 1]) l++;
+        while (l < r && nums[r] === nums[r - 1]) r--;
+        
+        l++;
+        r--;
+        
+        if (l < r) {
+          timeline.push({
+            nums: [...nums], i, l, r, res: [...res],
+            desc: `Increment 'l' and decrement 'r' to find other possible pairs for this 'i'.`,
+            activeLines: [10, 11],
+            logic: `Move both 'l' and 'r' inwards to find more triplets for this 'i'.`, logicClass: 'info', activeStep: 3
+          });
+        }
+      } else if (sum < 0) {
+        timeline.push({
+          nums: [...nums], i, l, r, res: [...res],
+          desc: `Sum = ${nums[i]} + ${nums[l]} + ${nums[r]} = ${sum}. Since sum < 0, we need a larger value, so we increment 'l'.`,
+          activeLines: [7, 8, 12, 13],
+          logic: `Sum = ${nums[i]} + ${nums[l]} + ${nums[r]} = <strong>${sum}</strong>.<br/>Sum < 0, so increment 'l' to get a larger sum.`, logicClass: 'info', activeStep: 2
+        });
+        l++;
+      } else {
+        timeline.push({
+          nums: [...nums], i, l, r, res: [...res],
+          desc: `Sum = ${nums[i]} + ${nums[l]} + ${nums[r]} = ${sum}. Since sum > 0, we need a smaller value, so we decrement 'r'.`,
+          activeLines: [7, 8, 14, 15],
+          logic: `Sum = ${nums[i]} + ${nums[l]} + ${nums[r]} = <strong>${sum}</strong>.<br/>Sum > 0, so decrement 'r' to get a smaller sum.`, logicClass: 'info', activeStep: 2
+        });
+        r--;
+      }
+    }
+    
+    timeline.push({
+      nums: [...nums], i, l, r, res: [...res],
+      desc: `l >= r, so inner loop ends for i=${i}.`,
+      activeLines: [7],
+      logic: `'l' >= 'r'. Inner loop finished for this 'i'.`, logicClass: 'info', activeStep: 4
+    });
+  }
+
+  timeline.push({
+    nums: [...nums], i: n, l: -1, r: -1, res: [...res],
+    desc: `Skipping ahead, no more valid triplets can be formed. The algorithm is finished.`,
+    activeLines: [16],
+    logic: `No more valid triplets can be formed.<br/><strong style="color:var(--green)">Done!</strong>`, logicClass: 'success', activeStep: 4
+  });
+
+  return timeline;
+};
+
 const CONSTRAINTS = (
   <>
     <div><code>3 &lt;= nums.length &lt;= 3000</code></div>
@@ -60,89 +159,73 @@ const DEFAULT_PYTHON = `class Solution:\n    def threeSum(self, nums) -> list[li
 export default function ThreeSum({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
   
-  const timeline = [
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 0, l: 1, r: 5, res: [],
-      desc: "Sort the array first. Iterate `i` through the array. For i = 0 (val = -4), set `l` to i+1 and `r` to end.",
-      activeLines: [2, 3, 5, 6],
-      logic: '<strong>Init:</strong> Sort array. Fix `i` at index 0 (<strong style="color:var(--yellow)">-4</strong>).<br/>Set `l` to index 1 and `r` to end.', logicClass: 'info', activeStep: 1
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 0, l: 1, r: 5, res: [],
-      desc: "Sum = -4 + (-1) + 2 = -3. Since sum < 0, we need a larger value, so we increment `l`.",
-      activeLines: [7, 8, 12, 13],
-      logic: 'Sum = -4 + (-1) + 2 = <strong>-3</strong>.<br/>Sum < 0, so increment `l` to get a larger sum.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 0, l: 2, r: 5, res: [],
-      desc: "Sum = -4 + (-1) + 2 = -3. Still < 0, increment `l`.",
-      activeLines: [7, 8, 12, 13],
-      logic: 'Sum = -4 + (-1) + 2 = <strong>-3</strong>.<br/>Sum < 0, increment `l`.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 0, l: 3, r: 5, res: [],
-      desc: "Sum = -4 + 0 + 2 = -2. Still < 0, increment `l`.",
-      activeLines: [7, 8, 12, 13],
-      logic: 'Sum = -4 + 0 + 2 = <strong>-2</strong>.<br/>Sum < 0, increment `l`.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 0, l: 4, r: 5, res: [],
-      desc: "Sum = -4 + 1 + 2 = -1. Still < 0, increment `l`.",
-      activeLines: [7, 8, 12, 13],
-      logic: 'Sum = -4 + 1 + 2 = <strong>-1</strong>.<br/>Sum < 0, increment `l`.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 0, l: 5, r: 5, res: [],
-      desc: "l == r, so we stop the inner loop for i=0. Move to the next `i`.",
-      activeLines: [7],
-      logic: '`l` reached `r`. No triplets found for this `i`.<br/>Move to next `i`.', logicClass: 'info', activeStep: 4
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 1, l: 2, r: 5, res: [],
-      desc: "For i = 1 (val = -1), `l` starts at 2, `r` starts at 5.",
-      activeLines: [3, 5, 6],
-      logic: 'Fix `i` at index 1 (<strong style="color:var(--yellow)">-1</strong>).<br/>Set `l` to index 2 and `r` to end.', logicClass: 'info', activeStep: 1
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 1, l: 2, r: 5, res: [],
-      desc: "Sum = -1 + (-1) + 2 = 0. Found a triplet! Add [-1, -1, 2] to the result list.",
-      activeLines: [8, 9],
-      logic: 'Sum = -1 + (-1) + 2 = <strong>0</strong>.<br/><strong style="color:var(--green)">Triplet Found!</strong> Add to result.', logicClass: 'success', activeStep: 3
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 1, l: 3, r: 4, res: [[-1, -1, 2]],
-      desc: "Increment `l` and decrement `r` to find other possible pairs for this `i`.",
-      activeLines: [10, 11],
-      logic: 'Move both `l` and `r` inwards to find more triplets for this `i`.', logicClass: 'info', activeStep: 3
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 1, l: 3, r: 4, res: [[-1, -1, 2]],
-      desc: "Sum = -1 + 0 + 1 = 0. Another triplet! Add [-1, 0, 1].",
-      activeLines: [8, 9],
-      logic: 'Sum = -1 + 0 + 1 = <strong>0</strong>.<br/><strong style="color:var(--green)">Triplet Found!</strong> Add to result.', logicClass: 'success', activeStep: 3
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 1, l: 4, r: 3, res: [[-1, -1, 2], [-1, 0, 1]],
-      desc: "l > r, so inner loop ends.",
-      activeLines: [7],
-      logic: '`l` > `r`. Inner loop finished for this `i`.', logicClass: 'info', activeStep: 4
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 2, l: -1, r: -1, res: [[-1, -1, 2], [-1, 0, 1]],
-      desc: "i = 2 (val = -1). This is the same as the previous `i`, so we skip it to avoid duplicate triplets.",
-      activeLines: [4],
-      logic: '`nums[i] == nums[i-1]` (-1 == -1).<br/><strong style="color:var(--orange)">Duplicate element!</strong> Skip `i` to avoid duplicate triplets.', logicClass: 'warning', activeStep: 4
-    },
-    {
-      nums: [-4, -1, -1, 0, 1, 2], i: 4, l: -1, r: -1, res: [[-1, -1, 2], [-1, 0, 1]],
-      desc: "Skipping ahead, no more triplets can be found for i=3 or i=4.",
-      activeLines: [16],
-      logic: 'No more valid triplets can be formed.<br/><strong style="color:var(--green)">Done!</strong>', logicClass: 'success', activeStep: 4
-    }
-  ];
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [nums, setNums] = useState([-1,0,1,2,-1,-4]);
+  const [timeline, setTimeline] = useState(() => generateTimeline([-1,0,1,2,-1,-4]));
 
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(timeline.length);
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
   const current = timeline[step];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      
+      const n = parsed.length;
+      const sorted = [...parsed].sort((a,b)=>a-b);
+      const res: number[][] = [];
+      for (let i = 0; i < n - 2; i++) {
+        if (i > 0 && sorted[i] === sorted[i - 1]) continue;
+        let l = i + 1, r = n - 1;
+        while (l < r) {
+          const sum = sorted[i] + sorted[l] + sorted[r];
+          if (sum === 0) {
+            res.push([sorted[i], sorted[l], sorted[r]]);
+            while (l < r && sorted[l] === sorted[l+1]) l++;
+            while (l < r && sorted[r] === sorted[r-1]) r--;
+            l++; r--;
+          } else if (sum < 0) l++;
+          else r--;
+        }
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        nums: parsed,
+        input: formattedLabel,
+        output: `[${res.map(t => `[${t.join(',')}]`).join(',')}]`,
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [-1,0,1,2,-1,-4]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        List<List<Integer>> res = threeSum(nums);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    nums = ${clean}\n    res = Solution().threeSum(nums)\n    print(res)`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -150,10 +233,31 @@ export default function ThreeSum({ onBack }: { onBack?: () => void }) {
         <VPHeader title="3Sum" lcNum="15" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const ex = examples[idx];
+                const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+                setNums(inputArr);
+                setTimeline(generateTimeline(inputArr));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -164,7 +268,24 @@ export default function ThreeSum({ onBack }: { onBack?: () => void }) {
       <VPHeader title="3Sum" lcNum="15" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            const ex = examples[idx];
+            const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+            setNums(inputArr);
+            setTimeline(generateTimeline(inputArr));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 

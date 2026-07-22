@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -14,25 +14,36 @@ const PROBLEM_STATEMENT = (
   </>
 );
 
-const EXAMPLES = [
+const INITIAL_EXAMPLES = [
   { 
-    label: 'Example 1', 
+    label: 's = "A man, a plan, a canal: Panama"',
+    s: 'A man, a plan, a canal: Panama',
     input: 's = "A man, a plan, a canal: Panama"', 
     output: 'true',
     explanation: <>"amanaplanacanalpanama" is a palindrome.</>
   },
   { 
-    label: 'Example 2', 
+    label: 's = "race a car"',
+    s: 'race a car',
     input: 's = "race a car"', 
     output: 'false',
     explanation: <>"raceacar" is not a palindrome.</>
   },
   { 
-    label: 'Example 3', 
+    label: 's = " "',
+    s: ' ',
     input: 's = " "', 
     output: 'true',
     explanation: <>An empty string reads the same forward and backward.</>
   }
+];
+
+const EDGE_CASES = [
+  '"A man, a plan, a canal: Panama"',
+  '"   "',
+  '"0P"',
+  '"race a E-car"',
+  '"Are we not pure? “No, sir!” Panama’s moody Noriega brags. “It is garbage!” Irony dooms a man—a prisoner up to new era."'
 ];
 
 const CONSTRAINTS = (
@@ -42,15 +53,8 @@ const CONSTRAINTS = (
   </>
 );
 
-const DEFAULT_JAVA = `class Main {\n    public static boolean isPalindrome(String s) {\n        // Write your code here\n        return false;\n    }\n
-
-    public static void main(String[] args) {
-        // Add test cases here
-    }
-}`;
-const DEFAULT_PYTHON = `class Solution:\n    def isPalindrome(self, s: str) -> bool:\n        # Write your code here\n        pass`;
-
-const S = "Race, car";
+const DEFAULT_JAVA = `class Main {\n    public static boolean isPalindrome(String s) {\n        // Write your code here\n        return false;\n    }\n\n    public static void main(String[] args) {\n        String s = "A man, a plan, a canal: Panama";\n        System.out.println("Result: " + isPalindrome(s));\n    }\n}`;
+const DEFAULT_PYTHON = `class Solution:\n    def isPalindrome(self, s: str) -> bool:\n        # Write your code here\n        pass\n\nif __name__ == "__main__":\n    s = "A man, a plan, a canal: Panama"\n    print(f"Result: {Solution().isPalindrome(s)}")`;
 
 const isAlphaNumeric = (char: string) => {
   const code = char.charCodeAt(0);
@@ -61,9 +65,9 @@ const isAlphaNumeric = (char: string) => {
   );
 };
 
-const generateTimeline = () => {
+const generateTimeline = (str: string) => {
   const timeline: any[] = [];
-  const chars = S.split('');
+  const chars = str.split('');
   
   timeline.push({
     l: 0, r: chars.length - 1, status: 'running',
@@ -164,12 +168,60 @@ const generateTimeline = () => {
   return timeline;
 };
 
-const TIMELINE = generateTimeline();
-
 export default function ValidPalindrome({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const [examples, setExamples] = useState(INITIAL_EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [s, setS] = useState(INITIAL_EXAMPLES[0].s);
+  const [timeline, setTimeline] = useState(() => generateTimeline(INITIAL_EXAMPLES[0].s));
+  
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
+  const current = timeline[step];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    let clean = val;
+    if (val.startsWith('s = ')) clean = val.substring(4);
+    if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
+      clean = clean.substring(1, clean.length - 1);
+    }
+
+    const formattedLabel = `${isEdgeCase ? '✨ ' : ''}s = "${clean}"`;
+    let outputStr = 'true';
+    let l = 0; let r = clean.length - 1;
+    while(l < r) {
+       while(l < r && !isAlphaNumeric(clean[l])) l++;
+       while(l < r && !isAlphaNumeric(clean[r])) r--;
+       if(l < r && clean[l].toLowerCase() !== clean[r].toLowerCase()) { outputStr = 'false'; break; }
+       l++; r--;
+    }
+
+    const newEx = {
+      label: formattedLabel,
+      s: clean,
+      input: formattedLabel,
+      output: outputStr,
+      explanation: undefined as any
+    };
+
+    const newExamples = [...examples, newEx];
+    setExamples(newExamples);
+    setActiveEx(newExamples.length - 1);
+    setS(clean);
+    setTimeline(generateTimeline(clean));
+    reset();
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    const match = exampleStr.match(/s = "(.*)"/);
+    if (!match) return code;
+    const strVal = match[1];
+
+    if (lang === 'java') {
+      return code.replace(/String s = ".*?";/, `String s = "${strVal}";`);
+    } else {
+      return code.replace(/s = ".*"/, `s = "${strVal}"`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -177,10 +229,29 @@ export default function ValidPalindrome({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Valid Palindrome" lcNum="125" difficulty="Easy" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                setS(examples[idx].s); 
+                setTimeline(generateTimeline(examples[idx].s));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -191,13 +262,28 @@ export default function ValidPalindrome({ onBack }: { onBack?: () => void }) {
       <VPHeader title="Valid Palindrome" lcNum="125" difficulty="Easy" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            setS(examples[idx].s); 
+            setTimeline(generateTimeline(examples[idx].s));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={timeline.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<RefreshCcw size={20} />} title="Two Pointers (Inwards)"
               lines={["Use a left pointer at the start and a right pointer at the end.", "Skip over any characters that are not letters or numbers.", "Compare the lowercase versions. If they differ, it's not a palindrome. Otherwise, move them inwards."]}
@@ -210,7 +296,7 @@ export default function ValidPalindrome({ onBack }: { onBack?: () => void }) {
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', flexWrap: 'wrap' }}>
-                  {S.split('').map((char: string, i: number) => {
+                  {s.split('').map((char: string, i: number) => {
                     const isL = current.l === i && current.status === 'running';
                     const isR = current.r === i && current.status === 'running';
                     const isProcessed = (i < current.l || i > current.r);
@@ -258,7 +344,7 @@ export default function ValidPalindrome({ onBack }: { onBack?: () => void }) {
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Comparing Characters"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === timeline.length - 1 ? "Done!" : "Comparing Characters"} desc={current.desc} step={step} maxSteps={timeline.length} isDone={step === timeline.length - 1} />
           </div>
         }
         right={

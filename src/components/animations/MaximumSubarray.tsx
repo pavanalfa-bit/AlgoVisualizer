@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -52,8 +52,18 @@ const DEFAULT_PYTHON = `class Solution:\n    def maxSubArray(self, nums: list[in
 
 const NUMS = [-2, 1, -3, 4, -1, 2, 1, -5, 4];
 
-const generateTimeline = () => {
+
+const EDGE_CASES = [
+  "nums = [-2,-3,-1,-5]",
+  "nums = [1,2,3,4,5]",
+  "nums = [-5,2,4,-3,6,1]",
+  "nums = [0,0,0,0]"
+];
+
+const generateTimeline = (arr: number[]) => {
   const timeline: any[] = [];
+  const NUMS = [...arr];
+  if (NUMS.length === 0) return timeline;
   let maxSum = NUMS[0];
   let curSum = 0;
   let L = 0;
@@ -100,12 +110,73 @@ const generateTimeline = () => {
   return timeline;
 };
 
-const TIMELINE = generateTimeline();
 
 export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [nums, setNums] = useState([-2, 1, -3, 4, -1, 2, 1, -5, 4]);
+  const [timeline, setTimeline] = useState(() => generateTimeline([-2, 1, -3, 4, -1, 2, 1, -5, 4]));
+
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
+  const current = timeline[step] || timeline[timeline.length - 1];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      
+      let maxSum = parsed[0];
+      let curSum = 0;
+      for (let i = 0; i < parsed.length; i++) {
+        if (curSum < 0) curSum = 0;
+        curSum += parsed[i];
+        maxSum = Math.max(maxSum, curSum);
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        nums: parsed,
+        input: formattedLabel,
+        output: maxSum.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [-2,1,-3,4,-1,2,1,-5,4]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {
+        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};
+        int res = maxSubArray(nums);
+        System.out.println(res);
+    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":
+    nums = ${clean}
+    res = Solution().maxSubArray(nums)
+    print(res)`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -113,10 +184,31 @@ export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Maximum Subarray" lcNum="53" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const ex = examples[idx];
+                const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+                setNums(inputArr);
+                setTimeline(generateTimeline(inputArr));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -127,13 +219,30 @@ export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
       <VPHeader title="Maximum Subarray" lcNum="53" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            const ex = examples[idx];
+            const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+            setNums(inputArr);
+            setTimeline(generateTimeline(inputArr));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={timeline.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<MousePointerSquareDashed size={20} />} title="Kadane's Algorithm"
               lines={["Maintain a running sum of the current subarray.", "If the running sum ever becomes negative, it's a useless prefix! We discard it by resetting the sum to 0 and starting a new window."]}
@@ -146,7 +255,7 @@ export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', gap: '4px', flexWrap: 'wrap' }}>
-                  {NUMS.map((n, i) => {
+                  {nums.map((n, i) => {
                     const isInWindow = i >= current.L && i <= current.R && current.L !== -1;
                     const isR = current.R === i;
                     const isL = current.L === i;
@@ -190,7 +299,7 @@ export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">R (Window End)</div>
-                  <div className="st-val" style={{ color: 'var(--sky)' }}>{current.R < NUMS.length ? current.R : '-'}</div>
+                  <div className="st-val" style={{ color: 'var(--sky)' }}>{current.R < nums.length ? current.R : '-'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Current Sum</div>
@@ -204,7 +313,7 @@ export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Scanning Subarrays"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === timeline.length - 1 ? "Done!" : "Scanning Subarrays"} desc={current.desc} step={step} maxSteps={timeline.length} isDone={step === timeline.length - 1} />
           </div>
         }
         right={

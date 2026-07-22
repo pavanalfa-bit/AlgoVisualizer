@@ -9,10 +9,10 @@ import {
   PracticeWorkspace
 } from './VisualizerLayout';
 
-const EXAMPLES: any[] = [
-  { label: '[[1,2,3],[3,2,1]]', grid: [[1,2,3],[3,2,1]], output: '6' },
-  { label: '[[1,5],[7,3],[3,5]]', grid: [[1,5],[7,3],[3,5]], output: '10' },
-  { label: '[[2,8,7],[7,1,3]]', grid: [[2,8,7],[7,1,3]], output: '17' },
+const INITIAL_EXAMPLES = [
+  { label: '[ [ 1, 2, 3 ], [ 3, 2, 1 ] ]', grid: [[1,2,3],[3,2,1]], output: '6' },
+  { label: '[ [ 1, 5 ], [ 7, 3 ], [ 3, 5 ] ]', grid: [[1,5],[7,3],[3,5]], output: '10' },
+  { label: '[ [ 2, 8, 7 ], [ 7, 1, 3 ] ]', grid: [[2,8,7],[7,1,3]], output: '17' },
 ];
 
 const CODE_JAVA = [
@@ -39,8 +39,9 @@ const CODE_PY = [
 ];
 
 export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState(INITIAL_EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
-  const [grid, setGrid] = useState(EXAMPLES[0].grid);
+  const [grid, setGrid] = useState(examples[0].grid);
   const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
 
   // Pre-compute steps
@@ -118,6 +119,40 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
     constraints: <>m == accounts.length | n == accounts[i].length | 1 ≤ m, n ≤ 50 | 1 ≤ accounts[i][j] ≤ 100</>
   };
 
+  const handleCustomInput = (val: string) => {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+        let maxOutput = 0;
+        parsed.forEach((row: number[]) => {
+          let sum = row.reduce((a, b) => a + b, 0);
+          maxOutput = Math.max(maxOutput, sum);
+        });
+
+        const formattedLabel = '[ ' + parsed.map((row: any[]) => '[ ' + row.join(', ') + ' ]').join(', ') + ' ]';
+        const newEx = { label: formattedLabel, grid: parsed, output: maxOutput.toString() };
+        const newExamples = [...examples, newEx];
+        setExamples(newExamples);
+        setActiveEx(newExamples.length - 1);
+        setGrid(parsed);
+        reset();
+      } else {
+        alert("Invalid format. Please enter a 2D array like [[1,2],[3,4]]");
+      }
+    } catch (e) {
+      alert("Invalid JSON format. Please enter a 2D array like [[1,2],[3,4]]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    if (lang === 'java') {
+      const javaArray = exampleStr.replace(/\[/g, '{').replace(/\]/g, '}');
+      return code.replace(/int\[\]\[\] accounts = .*?;/, `int[][] accounts = ${javaArray};`);
+    } else {
+      return code.replace(/accounts = \[.*\]/, `accounts = ${exampleStr}`);
+    }
+  };
+
   return (
     <VisualizerLayout>
       <VPHeader 
@@ -133,7 +168,12 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
       {tab === 'visualizer' ? (
         <>
           <ProblemStatement {...problemProps} />
-          <ExamplePicker examples={EXAMPLES} activeEx={activeEx} onSelect={idx => { setActiveEx(idx); setGrid(EXAMPLES[idx].grid); reset(); }} />
+          <ExamplePicker 
+            examples={examples} 
+            activeEx={activeEx} 
+            onSelect={idx => { setActiveEx(idx); setGrid(examples[idx].grid); reset(); }} 
+            onCustomInput={handleCustomInput}
+          />
 
           <VPBody 
             left={
@@ -241,6 +281,16 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
 if __name__ == "__main__":
     accounts = [[1,2,3],[3,2,1]]
     print(f"Max wealth: {maximumWealth(accounts)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { setActiveEx(idx); setGrid(examples[idx].grid); reset(); }} 
+              onCustomInput={handleCustomInput}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       )}
     </VisualizerLayout>

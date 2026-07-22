@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, ResultBanner, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -17,18 +17,27 @@ const PROBLEM_STATEMENT = (
   </>
 );
 
-const EXAMPLES = [
+const INITIAL_EXAMPLES = [
   { 
-    label: 'Example 1', 
+    label: 'height = [ 1, 8, 6, 2, 5, 4, 8, 3, 7 ]', 
+    height: [1,8,6,2,5,4,8,3,7],
     input: 'height = [1,8,6,2,5,4,8,3,7]', 
     output: '49',
     explanation: <>The max area of water the container can contain is 49 (from index 1 to index 8: height 7 * width 7).</>
   },
   { 
-    label: 'Example 2', 
+    label: 'height = [ 1, 1 ]', 
+    height: [1,1],
     input: 'height = [1,1]', 
     output: '1'
   }
+];
+
+const EDGE_CASES = [
+  "height = [1, 100, 2, 2, 2, 100, 1]",
+  "height = [1, 2, 3, 4, 5, 25, 24, 3, 4]",
+  "height = [1, 1]",
+  "height = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]"
 ];
 
 const CONSTRAINTS = (
@@ -39,97 +48,126 @@ const CONSTRAINTS = (
   </>
 );
 
-const DEFAULT_JAVA = `class Main {\n    public static int maxArea(int[] height) {\n        // Write your code here\n        return 0;\n    }\n
+const DEFAULT_JAVA = `class Main {\n    public static int maxArea(int[] height) {\n        // Write your code here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        int[] height = new int[]{1, 8, 6, 2, 5, 4, 8, 3, 7};\n        System.out.println("Result: " + maxArea(height));\n    }\n}`;
+const DEFAULT_PYTHON = `class Solution:\n    def maxArea(self, height: list[int]) -> int:\n        # Write your code here\n        pass\n\nif __name__ == "__main__":\n    height = [1, 8, 6, 2, 5, 4, 8, 3, 7]\n    print(f"Result: {Solution().maxArea(height)}")`;
 
-    public static void main(String[] args) {
-        // Add test cases here
-    }
-}`;
-const DEFAULT_PYTHON = `class Solution:\n    def maxArea(self, height: list[int]) -> int:\n        # Write your code here\n        pass`;
+const generateTimeline = (heights: number[]) => {
+  const timeline: any[] = [];
+  let l = 0;
+  let r = heights.length - 1;
+  let maxA = 0;
 
-// Heights: [1, 8, 6, 2, 5, 4, 8, 3, 7]
-// Length: 9
-const TIMELINE = [
-  {
-    l: 0, r: 8, maxA: 0, 
+  timeline.push({
+    l, r, maxA, 
     activeLines: [2, 3], activeStep: 1,
     desc: "Initialize pointers at both ends of the array to maximize the initial width.",
-    logic: '<strong>Init:</strong> Set `l` = 0, `r` = 8. Max Area = 0.', logicClass: 'info'
-  },
-  {
-    l: 0, r: 8, maxA: 8,
-    activeLines: [5, 6], activeStep: 2,
-    desc: "Calculate area: min(1, 7) * 8 = 1 * 8 = 8. Max area is now 8.",
-    logic: 'Width = 8, Min Height = min(<strong style="color:var(--pink)">1</strong>, <strong style="color:var(--sky)">7</strong>) = 1.<br/>Area = 1 * 8 = <strong>8</strong>.', logicClass: 'success'
-  },
-  {
-    l: 0, r: 8, maxA: 8,
-    activeLines: [7, 8], activeStep: 3,
-    desc: "Since height[l] < height[r] (1 < 7), move the left pointer inwards.",
-    logic: 'height[l] < height[r] (<strong style="color:var(--pink)">1</strong> < <strong style="color:var(--sky)">7</strong>).<br/>Move `l` right to try finding a taller line.', logicClass: 'info'
-  },
-  {
-    l: 1, r: 8, maxA: 49,
-    activeLines: [5, 6], activeStep: 2,
-    desc: "Calculate area: min(8, 7) * 7 = 7 * 7 = 49. Update max area.",
-    logic: 'Width = 7, Min Height = min(<strong style="color:var(--pink)">8</strong>, <strong style="color:var(--sky)">7</strong>) = 7.<br/>Area = 7 * 7 = <strong>49</strong>.<br/><strong style="color:var(--green)">New Max!</strong>', logicClass: 'success'
-  },
-  {
-    l: 1, r: 8, maxA: 49,
-    activeLines: [9, 10], activeStep: 3,
-    desc: "Since height[l] >= height[r] (8 > 7), move the right pointer inwards.",
-    logic: 'height[l] >= height[r] (<strong style="color:var(--pink)">8</strong> >= <strong style="color:var(--sky)">7</strong>).<br/>Move `r` left to try finding a taller line.', logicClass: 'info'
-  },
-  {
-    l: 1, r: 7, maxA: 49,
-    activeLines: [5, 6], activeStep: 2,
-    desc: "Calculate area: min(8, 3) * 6 = 3 * 6 = 18. Max area remains 49.",
-    logic: 'Width = 6, Min Height = min(<strong style="color:var(--pink)">8</strong>, <strong style="color:var(--sky)">3</strong>) = 3.<br/>Area = 3 * 6 = 18.', logicClass: 'info'
-  },
-  {
-    l: 1, r: 7, maxA: 49,
-    activeLines: [9, 10], activeStep: 3,
-    desc: "Since height[l] >= height[r] (8 > 3), move the right pointer inwards.",
-    logic: 'height[l] >= height[r] (<strong style="color:var(--pink)">8</strong> >= <strong style="color:var(--sky)">3</strong>).<br/>Move `r` left.', logicClass: 'info'
-  },
-  {
-    l: 1, r: 6, maxA: 49,
-    activeLines: [5, 6], activeStep: 2,
-    desc: "Calculate area: min(8, 8) * 5 = 8 * 5 = 40. Max area remains 49.",
-    logic: 'Width = 5, Min Height = min(<strong style="color:var(--pink)">8</strong>, <strong style="color:var(--sky)">8</strong>) = 8.<br/>Area = 8 * 5 = 40.', logicClass: 'info'
-  },
-  {
-    l: 1, r: 6, maxA: 49,
-    activeLines: [9, 10], activeStep: 3,
-    desc: "Since height[l] >= height[r] (8 >= 8), move the right pointer inwards.",
-    logic: 'height[l] >= height[r] (<strong style="color:var(--pink)">8</strong> >= <strong style="color:var(--sky)">8</strong>).<br/>Move `r` left.', logicClass: 'info'
-  },
-  {
-    l: 1, r: 5, maxA: 49,
-    activeLines: [5, 6], activeStep: 2,
-    desc: "Calculate area: min(8, 4) * 4 = 4 * 4 = 16. Max area remains 49.",
-    logic: 'Width = 4, Min Height = min(<strong style="color:var(--pink)">8</strong>, <strong style="color:var(--sky)">4</strong>) = 4.<br/>Area = 4 * 4 = 16.', logicClass: 'info'
-  },
-  {
-    l: 1, r: 5, maxA: 49,
-    activeLines: [9, 10], activeStep: 3,
-    desc: "Since height[l] >= height[r] (8 > 4), move the right pointer inwards.",
-    logic: 'height[l] >= height[r] (<strong style="color:var(--pink)">8</strong> >= <strong style="color:var(--sky)">4</strong>).<br/>Move `r` left.', logicClass: 'info'
-  },
-  {
-    l: 1, r: 4, maxA: 49,
-    activeLines: [13], activeStep: 4,
-    desc: "Pointers continue to move inward until they meet... Max area found is 49.",
-    logic: 'Fast-forwarding to end...<br/>`l` >= `r`. <strong style="color:var(--green)">Done!</strong>', logicClass: 'success'
+    logic: `<strong>Init:</strong> Set \`l\` = 0, \`r\` = ${r}. Max Area = 0.`, logicClass: 'info'
+  });
+
+  while (l < r) {
+    const w = r - l;
+    const h = Math.min(heights[l], heights[r]);
+    const area = w * h;
+    let newMax = false;
+    
+    if (area > maxA) {
+      maxA = area;
+      newMax = true;
+    }
+
+    timeline.push({
+      l, r, maxA,
+      activeLines: [5, 6], activeStep: 2,
+      desc: `Calculate area: min(${heights[l]}, ${heights[r]}) * ${w} = ${h} * ${w} = ${area}. ${newMax ? 'Update max area.' : `Max area remains ${maxA}.`}`,
+      logic: `Width = ${w}, Min Height = min(<strong style="color:var(--pink)">${heights[l]}</strong>, <strong style="color:var(--sky)">${heights[r]}</strong>) = ${h}.<br/>Area = ${h} * ${w} = <strong>${area}</strong>.${newMax ? '<br/><strong style="color:var(--green)">New Max!</strong>' : ''}`, 
+      logicClass: newMax ? 'success' : 'info'
+    });
+
+    if (heights[l] < heights[r]) {
+      timeline.push({
+        l, r, maxA,
+        activeLines: [7, 8], activeStep: 3,
+        desc: `Since height[l] < height[r] (${heights[l]} < ${heights[r]}), move the left pointer inwards.`,
+        logic: `height[l] < height[r] (<strong style="color:var(--pink)">${heights[l]}</strong> < <strong style="color:var(--sky)">${heights[r]}</strong>).<br/>Move \`l\` right to try finding a taller line.`, logicClass: 'info'
+      });
+      l++;
+    } else {
+      timeline.push({
+        l, r, maxA,
+        activeLines: [9, 10], activeStep: 3,
+        desc: `Since height[l] >= height[r] (${heights[l]} >= ${heights[r]}), move the right pointer inwards.`,
+        logic: `height[l] >= height[r] (<strong style="color:var(--pink)">${heights[l]}</strong> >= <strong style="color:var(--sky)">${heights[r]}</strong>).<br/>Move \`r\` left to try finding a taller line.`, logicClass: 'info'
+      });
+      r--;
+    }
   }
-];
+
+  timeline.push({
+    l, r, maxA,
+    activeLines: [13], activeStep: 4,
+    desc: `Pointers continue to move inward until they meet... Max area found is ${maxA}.`,
+    logic: `Fast-forwarding to end...<br/>\`l\` >= \`r\`. <strong style="color:var(--green)">Done!</strong>`, logicClass: 'success'
+  });
+
+  return timeline;
+};
 
 export default function ContainerWater({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [examples, setExamples] = useState(INITIAL_EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [heights, setHeights] = useState(INITIAL_EXAMPLES[0].height);
+  const [timeline, setTimeline] = useState(() => generateTimeline(INITIAL_EXAMPLES[0].height));
   
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
-  const heights = [1, 8, 6, 2, 5, 4, 8, 3, 7];
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
+  const current = timeline[step];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('height = ')) clean = val.substring(9);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length < 2) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}height = [ ${parsed.join(', ')} ]`;
+      
+      let maxA = 0;
+      let l = 0; let r = parsed.length - 1;
+      while(l < r) {
+        maxA = Math.max(maxA, Math.min(parsed[l], parsed[r]) * (r - l));
+        if (parsed[l] < parsed[r]) l++; else r--;
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        height: parsed,
+        input: formattedLabel,
+        output: maxA.toString()
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setHeights(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: [1, 8, 6, 2]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    const match = exampleStr.match(/height = (\[.*?\])/);
+    if (!match) return code;
+    const arrStr = match[1];
+
+    if (lang === 'java') {
+      const javaArray = arrStr.replace(/\[/g, '{').replace(/\]/g, '}');
+      return code.replace(/int\[\] height = .*?;/, `int[] height = new int[]${javaArray};`);
+    } else {
+      return code.replace(/height = \[.*\]/, `height = ${arrStr}`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -137,10 +175,29 @@ export default function ContainerWater({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Container With Most Water" lcNum="11" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                setHeights(examples[idx].height); 
+                setTimeline(generateTimeline(examples[idx].height));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -151,13 +208,28 @@ export default function ContainerWater({ onBack }: { onBack?: () => void }) {
       <VPHeader title="Container With Most Water" lcNum="11" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            setHeights(examples[idx].height); 
+            setTimeline(generateTimeline(examples[idx].height));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={timeline.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Waves size={20} />} title="Two Pointers (Outside In)"
               lines={["Place pointers at both ends to maximize initial width.", "At each step, calculate the area. Then, move the pointer pointing to the shorter line inward, as moving the taller line can't possibly increase the area."]}
@@ -250,7 +322,7 @@ export default function ContainerWater({ onBack }: { onBack?: () => void }) {
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
 
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Calculating Area"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === timeline.length - 1 ? "Done!" : "Calculating Area"} desc={current.desc} step={step} maxSteps={timeline.length} isDone={step === timeline.length - 1} />
           </div>
         }
         right={

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, ResultBanner, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, PracticeWorkspace, ProblemStatement 
+  AlgorithmList, Complexity, WhyItWorks, PracticeWorkspace, ProblemStatement, ExamplePicker 
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -15,24 +15,66 @@ const PROBLEM_STATEMENT = (
   </>
 );
 
-const EXAMPLES = [
+const INITIAL_EXAMPLES = [
   { 
-    label: 'Example 1', 
+    label: 'nums = [ 2, 7, 11, 15 ], target = 9', 
+    nums: [2, 7, 11, 15], target: 9,
     input: 'nums = [2,7,11,15], target = 9', 
     output: '[0,1]',
     explanation: <>Because <code>nums[0] + nums[1] == 9</code>, we return <code>[0, 1]</code>.</>
   },
   { 
-    label: 'Example 2', 
+    label: 'nums = [ 3, 2, 4 ], target = 6', 
+    nums: [3, 2, 4], target: 6,
     input: 'nums = [3,2,4], target = 6', 
     output: '[1,2]',
   },
   { 
-    label: 'Example 3', 
+    label: 'nums = [ 3, 3 ], target = 6', 
+    nums: [3, 3], target: 6,
     input: 'nums = [3,3], target = 6', 
     output: '[0,1]',
   }
 ];
+
+const EDGE_CASES = [
+  "nums = [3, 3], target = 6",
+  "nums = [-1, -2, -3, -4, -5], target = -8",
+  "nums = [0, 4, 3, 0], target = 0",
+  "nums = [2, 7, 11, 15, 27, 42, 99], target = 141"
+];
+
+const generateSteps = (nums: number[], target: number) => {
+  const generated: any[] = [];
+  generated.push({ i: 0, map: {}, highlight: 0, line: 2, msg: 'Initialize empty hash map.', logic: '<strong>Init:</strong> Create an empty hash map to store `value: index` pairs.', logicClass: 'info', activeStep: 1 });
+  
+  const map: Record<number, number> = {};
+  let found = false;
+  
+  for (let i = 0; i < nums.length; i++) {
+    const val = nums[i];
+    const comp = target - val;
+    
+    const currentMap = { ...map };
+    generated.push({ i, map: currentMap, highlight: i, line: 4, msg: `i = ${i}. Current val = ${val}. Complement = ${target} - ${val} = ${comp}.`, logic: `Current element: <strong style="color:var(--blue)">${val}</strong>. <br/>Complement needed: ${target} - ${val} = <strong style="color:var(--orange)">${comp}</strong>.`, logicClass: '', activeStep: 2 });
+    generated.push({ i, map: currentMap, highlight: i, line: 5, msg: `Does map contain ${comp}? ${comp in currentMap ? 'Yes!' : 'No.'}`, logic: `Check map for <strong style="color:var(--orange)">${comp}</strong>. ${comp in currentMap ? `Found it at index <strong>${currentMap[comp]}</strong>!` : 'Not found.'}`, logicClass: comp in currentMap ? 'success' : '', activeStep: comp in currentMap ? 4 : 2 });
+    
+    if (comp in currentMap) {
+      generated.push({ i, map: currentMap, highlight: i, line: 6, msg: `Return [${currentMap[comp]}, ${i}]. Solved!`, logic: `<strong style="color:var(--green)">Success!</strong> Return [map[${comp}], ${i}] → <strong>[${currentMap[comp]}, ${i}]</strong>.`, logicClass: 'success', activeStep: 4, success: true });
+      found = true;
+      break;
+    }
+    
+    generated.push({ i, map: currentMap, highlight: i, line: 8, msg: `Add (${val}: index ${i}) to map.`, logic: `Add <strong style="color:var(--blue)">${val}</strong> to map with index <strong>${i}</strong>.`, logicClass: '', activeStep: 3 });
+    map[val] = i;
+  }
+  
+  if (!found) {
+    generated.push({ i: nums.length - 1, map, highlight: nums.length - 1, line: 10, msg: 'No solution found.', logic: 'Return empty array.', logicClass: '', activeStep: 4, success: false });
+  }
+  
+  return generated;
+};
 
 const CONSTRAINTS = (
   <>
@@ -44,24 +86,84 @@ const CONSTRAINTS = (
   </>
 );
 
-const arr = [2, 7, 11, 15];
-const target = 9;
-
 export default function TwoSum({ onBack }: { onBack?: () => void }) {
   const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [examples, setExamples] = useState(INITIAL_EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [nums, setNums] = useState(INITIAL_EXAMPLES[0].nums);
+  const [target, setTarget] = useState(INITIAL_EXAMPLES[0].target);
+  const [steps, setSteps] = useState(() => generateSteps(INITIAL_EXAMPLES[0].nums, INITIAL_EXAMPLES[0].target));
   const [step, setStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(2);
 
-  const steps = [
-    { i: 0, map: {}, highlight: 0, line: 2, msg: 'Initialize empty hash map.', logic: '<strong>Init:</strong> Create an empty hash map to store `value: index` pairs.', logicClass: 'info', activeStep: 1 },
-    { i: 0, map: {}, highlight: 0, line: 4, msg: 'i = 0. Current val = 2. Complement = 9 - 2 = 7.', logic: 'Current element: <strong style="color:var(--blue)">2</strong>. <br/>Complement needed: 9 - 2 = <strong style="color:var(--orange)">7</strong>.', logicClass: '', activeStep: 2 },
-    { i: 0, map: {}, highlight: 0, line: 5, msg: 'Does map contain 7? No.', logic: 'Check map for <strong style="color:var(--orange)">7</strong>. Not found.', logicClass: '', activeStep: 2 },
-    { i: 0, map: { 2: 0 }, highlight: 0, line: 8, msg: 'Add (2: index 0) to map.', logic: 'Add <strong style="color:var(--blue)">2</strong> to map with index <strong>0</strong>.', logicClass: '', activeStep: 3 },
-    { i: 1, map: { 2: 0 }, highlight: 1, line: 4, msg: 'i = 1. Current val = 7. Complement = 9 - 7 = 2.', logic: 'Current element: <strong style="color:var(--blue)">7</strong>. <br/>Complement needed: 9 - 7 = <strong style="color:var(--orange)">2</strong>.', logicClass: '', activeStep: 2 },
-    { i: 1, map: { 2: 0 }, highlight: 1, line: 5, msg: 'Does map contain 2? Yes! (At index 0)', logic: 'Check map for <strong style="color:var(--orange)">2</strong>. Found it at index <strong>0</strong>!', logicClass: 'success', activeStep: 4 },
-    { i: 1, map: { 2: 0 }, highlight: 1, line: 6, msg: 'Return [0, 1]. Solved!', logic: '<strong style="color:var(--green)">Success!</strong> Return [map[2], 1] → <strong>[0, 1]</strong>.', logicClass: 'success', activeStep: 4, success: true },
-  ];
+  const reset = () => {
+    setStep(0);
+    setIsPlaying(false);
+  };
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val.replace(/nums\s*=\s*/g, '').replace(/target\s*=\s*/g, '');
+      const match = clean.match(/(\[.*\])\s*,\s*(-?\d+)/);
+      if (!match) throw new Error();
+      
+      const parsedNums = JSON.parse(match[1]);
+      if (!Array.isArray(parsedNums)) throw new Error();
+      const parsedTarget = parseInt(match[2], 10);
+      if (isNaN(parsedTarget)) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [ ${parsedNums.join(', ')} ], target = ${parsedTarget}`;
+      
+      let outputStr = '[]';
+      const map: Record<number, number> = {};
+      for (let i = 0; i < parsedNums.length; i++) {
+        const comp = parsedTarget - parsedNums[i];
+        if (comp in map) {
+          outputStr = `[${map[comp]},${i}]`;
+          break;
+        }
+        map[parsedNums[i]] = i;
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        nums: parsedNums,
+        target: parsedTarget,
+        input: formattedLabel,
+        output: outputStr
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsedNums);
+      setTarget(parsedTarget);
+      setSteps(generateSteps(parsedNums, parsedTarget));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: [2, 7, 11, 15], 9");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    const match = exampleStr.match(/nums = (\[.*?\]), target = (-?\d+)/);
+    if (!match) return code;
+    
+    const arrStr = match[1];
+    const tgtStr = match[2];
+
+    if (lang === 'java') {
+      const javaArray = arrStr.replace(/\[/g, '{').replace(/\]/g, '}');
+      let newCode = code.replace(/int\[\] nums = .*?;/, `int[] nums = new int[]${javaArray};`);
+      newCode = newCode.replace(/int target = .*?;/, `int target = ${tgtStr};`);
+      return newCode;
+    } else {
+      let newCode = code.replace(/nums = \[.*\]/, `nums = ${arrStr}`);
+      newCode = newCode.replace(/target = -?\d+/, `target = ${tgtStr}`);
+      return newCode;
+    }
+  };
 
   const currentStep = steps[step];
 
@@ -84,15 +186,30 @@ export default function TwoSum({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Two Sum" lcNum="1" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={tab} onTabChange={setTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={`class Main {\n    public static int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n
-
-    public static void main(String[] args) {
-        // Add test cases here
-    }
-}`}
-          defaultCodePython={`class Solution:\n    def twoSum(self, nums, target):\n        # Write your code here\n        pass`}
+          defaultCodeJava={`class Main {\n    public static int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = new int[]{2, 7, 11, 15};\n        int target = 9;\n        int[] result = twoSum(nums, target);\n        if (result.length == 2) {\n            System.out.println("Result: [" + result[0] + ", " + result[1] + "]");\n        } else {\n            System.out.println("Result: []");\n        }\n    }\n}`}
+          defaultCodePython={`def twoSum(nums, target):\n    # Write your code here\n    pass\n\nif __name__ == "__main__":\n    nums = [2, 7, 11, 15]\n    target = 9\n    print(f"Result: {twoSum(nums, target)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                setNums(examples[idx].nums); 
+                setTarget(examples[idx].target); 
+                setSteps(generateSteps(examples[idx].nums, examples[idx].target));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -102,7 +219,23 @@ export default function TwoSum({ onBack }: { onBack?: () => void }) {
     <VisualizerLayout>
       <VPHeader title="Two Sum" lcNum="1" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={tab} onTabChange={setTab} />
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            setNums(examples[idx].nums); 
+            setTarget(examples[idx].target); 
+            setSteps(generateSteps(examples[idx].nums, examples[idx].target));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
       <VPBody 
         left={
@@ -124,8 +257,8 @@ export default function TwoSum({ onBack }: { onBack?: () => void }) {
               </div>
 
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
-                <div className="array-container" style={{ margin: '0 auto' }}>
-                  {arr.map((val, idx) => {
+                <div className="array-container" style={{ margin: '0 auto', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {nums.map((val, idx) => {
                     const isHighlight = currentStep.highlight === idx;
                     const isSuccess = currentStep.success && (idx === currentStep.highlight || (currentStep.map as any)[target - val] === idx);
                     return (
@@ -180,11 +313,11 @@ export default function TwoSum({ onBack }: { onBack?: () => void }) {
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Current val</div>
-                  <div className="st-val">{arr[currentStep.highlight]}</div>
+                  <div className="st-val">{nums[currentStep.highlight]}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Complement</div>
-                  <div className="st-val">{target - arr[currentStep.highlight]}</div>
+                  <div className="st-val">{target - nums[currentStep.highlight]}</div>
                 </div>
               </div>
             </div>

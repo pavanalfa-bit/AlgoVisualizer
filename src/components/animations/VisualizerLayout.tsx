@@ -74,7 +74,7 @@ export function ProblemStatement({
   constraints: React.ReactNode;
 }) {
   return (
-    <div style={{ margin: '14px 28px 0', maxWidth: '1380px', marginLeft: 'auto', marginRight: 'auto' }}>
+    <div style={{ margin: '16px auto 0', maxWidth: '1440px', padding: '0 28px', width: '100%', boxSizing: 'border-box' }}>
       <div className="card">
         <div className="card-title">Problem</div>
         <div className="q-stmt">{statement}</div>
@@ -95,21 +95,84 @@ export function ProblemStatement({
 export function ExamplePicker({
   examples,
   activeEx,
-  onSelect
+  onSelect,
+  onCustomInput,
+  onGenerateEdgeCase
 }: {
   examples: { label: string; output: string }[];
   activeEx: number;
   onSelect: (idx: number) => void;
+  onCustomInput?: (val: string, isEdgeCase?: boolean) => void;
+  onGenerateEdgeCase?: () => Promise<string>;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [customVal, setCustomVal] = useState('');
+  const [isLoadingEdgeCase, setIsLoadingEdgeCase] = useState(false);
+
+  const handleCustomSubmit = () => {
+    if (customVal.trim() && onCustomInput) {
+      onCustomInput(customVal);
+      setIsEditing(false);
+      setCustomVal('');
+    }
+  };
+
   return (
-    <div className="ex-card card" style={{ margin: '10px 28px 0', maxWidth: '1380px', marginLeft: 'auto', marginRight: 'auto' }}>
-      <div className="card-title" style={{ marginBottom: 8 }}>Try Examples</div>
-      <div className="ex-row">
+    <div style={{ margin: '10px auto 0', maxWidth: '1440px', padding: '0 28px', width: '100%', boxSizing: 'border-box' }}>
+      <div className="ex-card card" style={{ margin: 0 }}>
+        <div className="card-title" style={{ marginBottom: 8 }}>Try Examples</div>
+      <div className="ex-row" style={{ flexWrap: 'wrap', gap: '8px' }}>
         {examples.map((ex, i) => (
           <button key={i} className={`ex-btn ${activeEx === i ? 'active' : ''}`} onClick={() => onSelect(i)}>
             <span className="ex-input">{ex.label}</span><span className="ex-arrow">→</span><span className="ex-output">{ex.output}</span>
           </button>
         ))}
+        
+        {onGenerateEdgeCase && onCustomInput && (
+          <button 
+            className="ex-btn edge-btn" 
+            onClick={async () => {
+              if (isLoadingEdgeCase) return;
+              setIsLoadingEdgeCase(true);
+              try {
+                const suggestion = await onGenerateEdgeCase();
+                if (onCustomInput) {
+                  onCustomInput(suggestion, true);
+                }
+              } catch(e) {
+                console.error(e);
+              } finally {
+                setIsLoadingEdgeCase(false);
+              }
+            }} 
+            style={{ borderStyle: 'solid', background: 'var(--surface2)', color: 'var(--accent)', borderColor: 'var(--accent)' }}
+          >
+            {isLoadingEdgeCase ? <span className="spinner">✨ Loading...</span> : <span>✨ Edge Case</span>}
+          </button>
+        )}
+        
+        {onCustomInput && (
+          isEditing ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--surface2)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <input 
+                autoFocus
+                type="text" 
+                placeholder="e.g. [[1,2],[3,4]]" 
+                value={customVal}
+                onChange={e => setCustomVal(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCustomSubmit()}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text)', outline: 'none', fontFamily: 'monospace', width: '150px', fontSize: '0.9rem' }}
+              />
+              <button onClick={handleCustomSubmit} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>Go</button>
+              <button onClick={() => setIsEditing(false)} style={{ background: 'transparent', color: 'var(--muted)', border: 'none', cursor: 'pointer', padding: '4px' }}>✕</button>
+            </div>
+          ) : (
+            <button className="ex-btn" onClick={() => setIsEditing(true)} style={{ borderStyle: 'dashed', background: 'transparent', color: 'var(--text)' }}>
+              + Custom
+            </button>
+          )
+        )}
+      </div>
       </div>
     </div>
   );
@@ -358,13 +421,19 @@ export function PracticeWorkspace({
   examples,
   constraints,
   defaultCodeJava,
-  defaultCodePython
+  defaultCodePython,
+  examplePicker,
+  activeExampleStr,
+  codeInjector
 }: {
   problemStatement: React.ReactNode;
   examples: { label: string; input: React.ReactNode; output: React.ReactNode; explanation?: React.ReactNode }[];
   constraints: React.ReactNode;
   defaultCodeJava: string;
   defaultCodePython?: string;
+  examplePicker?: React.ReactNode;
+  activeExampleStr?: string;
+  codeInjector?: (code: string, lang: string, exampleStr: string) => string;
 }) {
   const [language, setLanguage] = useState<'java' | 'python'>('java');
   const [code, setCode] = useState(defaultCodeJava);
@@ -373,14 +442,24 @@ export function PracticeWorkspace({
 
   // When default code props change (e.g. switching problems), update code
   React.useEffect(() => {
-    setCode(language === 'java' ? defaultCodeJava : (defaultCodePython || ''));
-  }, [defaultCodeJava, defaultCodePython]);
+    let newCode = language === 'java' ? defaultCodeJava : (defaultCodePython || '');
+    if (activeExampleStr && codeInjector) {
+      newCode = codeInjector(newCode, language, activeExampleStr);
+    }
+    setCode(newCode);
+  }, [defaultCodeJava, defaultCodePython, language]); // language added here so it correctly switches and injects
+
+  // When active example changes, inject it into the CURRENT code without losing user logic
+  React.useEffect(() => {
+    if (activeExampleStr && codeInjector) {
+      setCode(prev => codeInjector(prev, language, activeExampleStr));
+    }
+  }, [activeExampleStr, codeInjector]);
 
   // When language changes, update code
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const lang = e.target.value as 'java' | 'python';
     setLanguage(lang);
-    setCode(lang === 'java' ? defaultCodeJava : (defaultCodePython || ''));
   };
 
   const handleRunCode = async () => {
@@ -425,6 +504,11 @@ export function PracticeWorkspace({
       {/* Left Pane */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '32px', borderRight: '1px solid var(--border)' }}>
         <ProblemStatement statement={problemStatement} examples={examples} constraints={constraints} />
+        {examplePicker && (
+          <div style={{ marginTop: '16px' }}>
+            {examplePicker}
+          </div>
+        )}
       </div>
       {/* Right Pane */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -14,17 +14,25 @@ const PROBLEM_STATEMENT = (
   </>
 );
 
-const EXAMPLES = [
+const INITIAL_EXAMPLES = [
   { 
-    label: 'Example 1', 
+    label: 's = ["h","e","l","l","o"]', 
+    s: ["h","e","l","l","o"],
     input: 's = ["h","e","l","l","o"]', 
     output: '["o","l","l","e","h"]'
   },
   { 
-    label: 'Example 2', 
+    label: 's = ["H","a","n","n","a","h"]', 
+    s: ["H","a","n","n","a","h"],
     input: 's = ["H","a","n","n","a","h"]', 
     output: '["h","a","n","n","a","H"]'
   }
+];
+
+const EDGE_CASES = [
+  's = ["a", "a", "a", "a"]',
+  's = ["r", "a", "c", "e", "c", "a", "r"]',
+  's = ["A", " ", "m", "a", "n"]'
 ];
 
 const CONSTRAINTS = (
@@ -34,19 +42,12 @@ const CONSTRAINTS = (
   </>
 );
 
-const DEFAULT_JAVA = `class Main {\n    public static void reverseString(char[] s) {\n        // Write your code here\n        \n    }\n
+const DEFAULT_JAVA = `class Main {\n    public static void reverseString(char[] s) {\n        // Write your code here\n        \n    }\n\n    public static void main(String[] args) {\n        char[] s = new char[]{'h', 'e', 'l', 'l', 'o'};\n        reverseString(s);\n        System.out.println(java.util.Arrays.toString(s));\n    }\n}`;
+const DEFAULT_PYTHON = `class Solution:\n    def reverseString(self, s: list[str]) -> None:\n        """\n        Do not return anything, modify s in-place instead.\n        """\n        pass\n\nif __name__ == "__main__":\n    s = ["h", "e", "l", "l", "o"]\n    Solution().reverseString(s)\n    print(s)`;
 
-    public static void main(String[] args) {
-        // Add test cases here
-    }
-}`;
-const DEFAULT_PYTHON = `class Solution:\n    def reverseString(self, s: list[str]) -> None:\n        """\n        Do not return anything, modify s in-place instead.\n        """\n        pass`;
-
-const S = ["h", "e", "l", "l", "o"];
-
-const generateTimeline = () => {
+const generateTimeline = (chars: string[]) => {
   const timeline: any[] = [];
-  const arr = [...S];
+  const arr = [...chars];
   
   timeline.push({
     arr: [...arr], l: 0, r: arr.length - 1, isDone: false, isSwapping: false,
@@ -98,12 +99,56 @@ const generateTimeline = () => {
   return timeline;
 };
 
-const TIMELINE = generateTimeline();
-
 export default function ReverseString({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const [examples, setExamples] = useState(INITIAL_EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [sList, setSList] = useState(INITIAL_EXAMPLES[0].s);
+  const [timeline, setTimeline] = useState(() => generateTimeline(INITIAL_EXAMPLES[0].s));
+
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
+  const current = timeline[step];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('s = ')) clean = val.substring(4);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || typeof parsed[0] !== 'string') throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}s = ${JSON.stringify(parsed)}`;
+      const reversed = [...parsed].reverse();
+
+      const newEx = {
+        label: formattedLabel,
+        s: parsed,
+        input: formattedLabel,
+        output: JSON.stringify(reversed)
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setSList(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: [\"h\", \"e\", \"l\", \"l\", \"o\"]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    const match = exampleStr.match(/s = (\[.*?\])/);
+    if (!match) return code;
+    const arrStr = match[1];
+
+    if (lang === 'java') {
+      const javaArray = arrStr.replace(/\[/g, '{').replace(/\]/g, '}').replace(/"/g, "'");
+      return code.replace(/char\[\] s = .*?;/, `char[] s = new char[]${javaArray};`);
+    } else {
+      return code.replace(/s = \[.*\]/, `s = ${arrStr}`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -111,10 +156,29 @@ export default function ReverseString({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Reverse String" lcNum="344" difficulty="Easy" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                setSList(examples[idx].s); 
+                setTimeline(generateTimeline(examples[idx].s));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -125,13 +189,28 @@ export default function ReverseString({ onBack }: { onBack?: () => void }) {
       <VPHeader title="Reverse String" lcNum="344" difficulty="Easy" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            setSList(examples[idx].s); 
+            setTimeline(generateTimeline(examples[idx].s));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={timeline.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<ArrowLeftRight size={20} />} title="Two Pointers (Inwards)"
               lines={["Place a Left pointer at the beginning and a Right pointer at the end.", "Swap the characters they point to.", "Move them inwards until they meet or cross over. O(1) memory!"]}
@@ -202,7 +281,7 @@ export default function ReverseString({ onBack }: { onBack?: () => void }) {
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Swapping"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === timeline.length - 1 ? "Done!" : "Swapping"} desc={current.desc} step={step} maxSteps={timeline.length} isDone={step === timeline.length - 1} />
           </div>
         }
         right={

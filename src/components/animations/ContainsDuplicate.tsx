@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -51,8 +51,17 @@ const DEFAULT_PYTHON = `class Solution:\n    def containsDuplicate(self, nums: l
 
 const NUMS = [1, 2, 3, 1];
 
-const generateTimeline = () => {
+
+const EDGE_CASES = [
+  "nums = [1000, 2000, 3000, 4000]",
+  "nums = [-5, -5]",
+  "nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 1]",
+  "nums = [0, 0, 0]"
+];
+
+const generateTimeline = (arr: number[]) => {
   const timeline: any[] = [];
+  const nums = [...arr];
   const set = new Set<number>();
   
   timeline.push({
@@ -63,8 +72,8 @@ const generateTimeline = () => {
   });
 
   let found = false;
-  for (let i = 0; i < NUMS.length; i++) {
-    const num = NUMS[i];
+  for (let i = 0; i < nums.length; i++) {
+    const num = nums[i];
     
     timeline.push({
       curr: i, set: Array.from(set), found: false,
@@ -95,7 +104,7 @@ const generateTimeline = () => {
 
   if (!found) {
     timeline.push({
-      curr: NUMS.length, set: Array.from(set), found: false,
+      curr: nums.length, set: Array.from(set), found: false,
       activeLines: [9], activeStep: 5,
       desc: `Finished scanning the array. No duplicates were found. Return false.`,
       logic: `<strong style="color:var(--easy)">Finished!</strong> No duplicates found.`, logicClass: 'success'
@@ -105,12 +114,72 @@ const generateTimeline = () => {
   return timeline;
 };
 
-const TIMELINE = generateTimeline();
 
 export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [nums, setNums] = useState([1, 2, 3, 1]);
+  const [timeline, setTimeline] = useState(() => generateTimeline([1, 2, 3, 1]));
+
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
+  const current = timeline[step] || timeline[timeline.length - 1];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      
+      const s = new Set<number>();
+      let found = false;
+      for (const num of parsed) {
+        if (s.has(num)) { found = true; break; }
+        s.add(num);
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        nums: parsed,
+        input: formattedLabel,
+        output: found.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [1,2,3,1]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {
+        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};
+        boolean res = containsDuplicate(nums);
+        System.out.println(res);
+    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":
+    nums = ${clean}
+    res = Solution().containsDuplicate(nums)
+    print(res)`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -118,10 +187,31 @@ export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Contains Duplicate" lcNum="217" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const ex = examples[idx];
+                const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+                setNums(inputArr);
+                setTimeline(generateTimeline(inputArr));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -132,13 +222,30 @@ export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
       <VPHeader title="Contains Duplicate" lcNum="217" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            const ex = examples[idx];
+            const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+            setNums(inputArr);
+            setTimeline(generateTimeline(inputArr));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={timeline.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Database size={20} />} title="Hash Set (O(1) Lookups)"
               lines={["Initialize an empty Hash Set.", "Iterate through the array. For each number, check if it exists in the Hash Set.", "If it does, return true immediately. If it doesn't, add it and continue."]}
@@ -151,7 +258,7 @@ export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', gap: '8px', flexWrap: 'wrap' }}>
-                  {NUMS.map((num, i) => {
+                  {nums.map((num, i) => {
                     const isCurr = current.curr === i;
                     const isProcessed = i < current.curr;
                     const isDuplicate = current.found && isCurr;
@@ -196,7 +303,7 @@ export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
                 ) : (
                   <AnimatePresence>
                     {current.set.map((num: number) => {
-                      const isNewlyAdded = current.curr >= 0 && NUMS[current.curr] === num && !current.found && current.activeStep === 4;
+                      const isNewlyAdded = current.curr >= 0 && nums[current.curr] === num && !current.found && current.activeStep === 4;
                       return (
                         <motion.div
                           key={num}
@@ -222,7 +329,7 @@ export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Scanning"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === timeline.length - 1 ? "Done!" : "Scanning"} desc={current.desc} step={step} maxSteps={timeline.length} isDone={step === timeline.length - 1} />
           </div>
         }
         right={

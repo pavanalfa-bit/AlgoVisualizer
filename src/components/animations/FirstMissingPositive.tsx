@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -52,9 +52,17 @@ const DEFAULT_PYTHON = `class Solution:\n    def firstMissingPositive(self, nums
 
 const NUMS = [3, 4, -1, 1];
 
-const generateTimeline = () => {
+
+const EDGE_CASES = [
+  "nums = [1,2,3,4,5]",
+  "nums = [7,8,9,11,12]",
+  "nums = [3,4,-1,1]",
+  "nums = [1,1,1]"
+];
+
+const generateTimeline = (nums: number[]) => {
   const timeline: any[] = [];
-  const arr = [...NUMS];
+  const arr = [...nums];
   const n = arr.length;
   
   timeline.push({
@@ -146,12 +154,83 @@ const generateTimeline = () => {
   return timeline;
 };
 
-const TIMELINE = generateTimeline();
 
 export default function FirstMissingPositive({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [nums, setNums] = useState([3, 4, -1, 1]);
+  const [timeline, setTimeline] = useState(() => generateTimeline([3, 4, -1, 1]));
+
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
+  const current = timeline[step] || timeline[timeline.length - 1];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      
+      const arr = [...parsed];
+      const n = arr.length;
+      for (let i = 0; i < n; i++) {
+        while (arr[i] > 0 && arr[i] <= n && arr[arr[i] - 1] !== arr[i]) {
+          const target = arr[i] - 1;
+          const temp = arr[i];
+          arr[i] = arr[target];
+          arr[target] = temp;
+        }
+      }
+      let res = n + 1;
+      for (let i = 0; i < n; i++) {
+        if (arr[i] !== i + 1) {
+          res = i + 1;
+          break;
+        }
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        nums: parsed,
+        input: formattedLabel,
+        output: res.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [3,4,-1,1]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {
+        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};
+        int res = firstMissingPositive(nums);
+        System.out.println(res);
+    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":
+    nums = ${clean}
+    res = Solution().firstMissingPositive(nums)
+    print(res)`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -159,10 +238,33 @@ export default function FirstMissingPositive({ onBack }: { onBack?: () => void }
         <VPHeader title="First Missing Positive" lcNum="41" difficulty="Hard" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('nums = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].nums || JSON.parse(pr);
+                setNums(inputArr);
+                setTimeline(generateTimeline(inputArr));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -173,13 +275,30 @@ export default function FirstMissingPositive({ onBack }: { onBack?: () => void }
       <VPHeader title="First Missing Positive" lcNum="41" difficulty="Hard" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            const ex = examples[idx];
+            const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+            setNums(inputArr);
+            setTimeline(generateTimeline(inputArr));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={timeline.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Replace size={20} />} title="In-place Hashing (Cyclic Sort)"
               lines={["Since we want O(1) space, we use the input array itself as a Hash Table!", "Goal: Place value 'X' at index 'X-1' (e.g., place '1' at index 0).", "After organizing, scan the array. The first index 'i' where nums[i] != i+1 means 'i+1' is missing."]}
@@ -246,7 +365,7 @@ export default function FirstMissingPositive({ onBack }: { onBack?: () => void }
               <div className="state-grid">
                 <div className="stbox">
                   <div className="st-lbl">Phase</div>
-                  <div className="st-val">{current.i < NUMS.length ? '1 (Sorting)' : '2 (Scanning)'}</div>
+                  <div className="st-val">{current.i < nums.length ? '1 (Sorting)' : '2 (Scanning)'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Result</div>
@@ -258,7 +377,7 @@ export default function FirstMissingPositive({ onBack }: { onBack?: () => void }
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "In-place Hashing"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === timeline.length - 1 ? "Done!" : "In-place Hashing"} desc={current.desc} step={step} maxSteps={timeline.length} isDone={step === timeline.length - 1} />
           </div>
         }
         right={

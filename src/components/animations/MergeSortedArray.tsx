@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, ResultBanner, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -34,51 +34,163 @@ const DEFAULT_PYTHON = `class Solution:
         # Write your code here
         pass`;
 
+const EXAMPLES = [
+  { 
+    label: 'Example 1', 
+    input: 'nums1 = [1,2,3,0,0,0], m = 3, nums2 = [2,5,6], n = 3', 
+    output: '[1,2,2,3,5,6]', 
+    explanation: <>The arrays we are merging are [1,2,3] and [2,5,6].<br/>The result of the merge is [1,2,2,3,5,6] with the underlined elements coming from nums1.</> 
+  },
+  { 
+    label: 'Example 2', 
+    input: 'nums1 = [1], m = 1, nums2 = [], n = 0', 
+    output: '[1]', 
+    explanation: <>The arrays we are merging are [1] and [].<br/>The result of the merge is [1].</> 
+  },
+  { 
+    label: 'Example 3', 
+    input: 'nums1 = [0], m = 0, nums2 = [1], n = 1', 
+    output: '[1]', 
+    explanation: <>The arrays we are merging are [] and [1].<br/>The result of the merge is [1].<br/>Note that because m = 0, there are no elements in nums1. The 0 is only there to ensure the merge result can fit in nums1.</> 
+  }
+];
+
+const EDGE_CASES = [
+  "nums1 = [4,5,6,0,0,0], m = 3, nums2 = [1,2,3], n = 3",
+  "nums1 = [2,0], m = 1, nums2 = [1], n = 1"
+];
+
+const generateTimeline = (n1: number[], m: number, n2: number[], n: number) => {
+  const timeline: any[] = [];
+  
+  let p1 = m - 1;
+  let p2 = n - 1;
+  let p = m + n - 1;
+
+  const arr1 = [...n1];
+  for (let i = m; i < m + n; i++) arr1[i] = null as any;
+  const arr2 = [...n2];
+
+  timeline.push({
+    nums1: [...arr1], nums2: [...arr2],
+    p1, p2, p,
+    desc: "Initialize pointers p1 at m-1 (end of nums1's data), p2 at n-1 (end of nums2), and p at m+n-1 (end of nums1 array).",
+    activeLines: [2, 3, 4], logic: `p1 = ${p1}, p2 = ${p2}, p = ${p}`
+  });
+
+  while (p2 >= 0) {
+    if (p1 >= 0 && arr1[p1] > arr2[p2]) {
+      arr1[p] = arr1[p1];
+      timeline.push({
+        nums1: [...arr1], nums2: [...arr2],
+        p1, p2, p,
+        desc: `Compare nums1[p1] (${arr1[p]}) and nums2[p2] (${arr2[p2]}). ${arr1[p]} > ${arr2[p2]}, so place ${arr1[p]} at nums1[p]. Decrement p1 and p.`,
+        activeLines: [5, 6, 7], logic: `nums1[p1] > nums2[p2] -> nums1[p] = ${arr1[p]}`
+      });
+      p1--;
+    } else {
+      arr1[p] = arr2[p2];
+      timeline.push({
+        nums1: [...arr1], nums2: [...arr2],
+        p1, p2, p,
+        desc: `Compare nums1[p1] (${p1>=0?arr1[p1]:'-'}) and nums2[p2] (${arr2[p2]}). ${arr2[p2]} >= ${p1>=0?arr1[p1]:'-'}, so place ${arr2[p2]} at nums1[p]. Decrement p2 and p.`,
+        activeLines: [5, 8, 9, 10], logic: `nums2[p2] >= nums1[p1] -> nums1[p] = ${arr2[p2]}`
+      });
+      p2--;
+    }
+    p--;
+  }
+  
+  timeline.push({
+    nums1: [...arr1], nums2: [...arr2],
+    p1, p2, p,
+    desc: "p2 < 0. We've merged all elements from nums2. The remaining elements in nums1 are already sorted in place.",
+    activeLines: [12], logic: "Loop terminates since p2 < 0"
+  });
+
+  return timeline;
+};
+
 export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
   
-  // Hardcoded state timeline for nums1 = [1,2,3,0,0,0], nums2 = [2,5,6]
-  const timeline = [
-    {
-      nums1: [1,2,3,null,null,null], nums2: [2,5,6],
-      p1: 2, p2: 2, p: 5,
-      desc: "Initialize pointers p1 at m-1 (end of nums1's data), p2 at n-1 (end of nums2), and p at m+n-1 (end of nums1 array).",
-      activeLines: [2, 3, 4], logic: "p1 = 2, p2 = 2, p = 5"
-    },
-    {
-      nums1: [1,2,3,null,null,6], nums2: [2,5,6],
-      p1: 2, p2: 1, p: 4,
-      desc: "Compare nums1[p1] (3) and nums2[p2] (6). 6 > 3, so place 6 at nums1[p]. Decrement p2 and p.",
-      activeLines: [5, 9, 10, 11], logic: "nums2[p2] > nums1[p1] -> nums1[p] = 6"
-    },
-    {
-      nums1: [1,2,3,null,5,6], nums2: [2,5,6],
-      p1: 2, p2: 0, p: 3,
-      desc: "Compare nums1[p1] (3) and nums2[p2] (5). 5 > 3, so place 5 at nums1[p]. Decrement p2 and p.",
-      activeLines: [5, 9, 10, 11], logic: "nums2[p2] > nums1[p1] -> nums1[p] = 5"
-    },
-    {
-      nums1: [1,2,3,3,5,6], nums2: [2,5,6],
-      p1: 1, p2: 0, p: 2,
-      desc: "Compare nums1[p1] (3) and nums2[p2] (2). 3 > 2, so place 3 at nums1[p]. Decrement p1 and p.",
-      activeLines: [5, 6, 7], logic: "nums1[p1] >= nums2[p2] -> nums1[p] = 3"
-    },
-    {
-      nums1: [1,2,2,3,5,6], nums2: [2,5,6],
-      p1: 1, p2: -1, p: 1,
-      desc: "Compare nums1[p1] (2) and nums2[p2] (2). 2 >= 2, so place 2 at nums1[p]. Decrement p1 and p.",
-      activeLines: [5, 6, 7], logic: "nums1[p1] >= nums2[p2] -> nums1[p] = 2"
-    },
-    {
-      nums1: [1,2,2,3,5,6], nums2: [2,5,6],
-      p1: 1, p2: -1, p: 1,
-      desc: "p2 < 0. We've merged all elements from nums2. The remaining elements in nums1 are already sorted in place.",
-      activeLines: [13], logic: "Loop terminates since p2 < 0"
-    }
-  ];
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [nums1, setNums1] = useState([1,2,3,0,0,0]);
+  const [m, setM] = useState(3);
+  const [nums2, setNums2] = useState([2,5,6]);
+  const [n, setN] = useState(3);
+  const [timeline, setTimeline] = useState(() => generateTimeline([1,2,3,0,0,0], 3, [2,5,6], 3));
 
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(timeline.length);
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
   const current = timeline[step];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      const parts = val.split('nums2');
+      if (parts.length < 2) throw new Error();
+      
+      const p1 = parts[0].split('m');
+      let n1Str = p1[0].replace('nums1', '').replace('=', '').trim();
+      if(n1Str.endsWith(',')) n1Str = n1Str.substring(0, n1Str.length-1);
+      
+      let mStr = p1[1].replace('=', '').trim();
+      if(mStr.endsWith(',')) mStr = mStr.substring(0, mStr.length-1);
+      
+      const p2 = parts[1].split('n');
+      let n2Str = p2[0].replace('=', '').trim();
+      if(n2Str.endsWith(',')) n2Str = n2Str.substring(0, n2Str.length-1);
+      
+      let nnStr = p2[1].replace('=', '').trim();
+      
+      const parsedN1 = JSON.parse(n1Str);
+      const parsedM = parseInt(mStr);
+      const parsedN2 = JSON.parse(n2Str);
+      const parsedN = parseInt(nnStr);
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums1 = [${parsedN1}], m = ${parsedM}, nums2 = [${parsedN2}], n = ${parsedN}`;
+      
+      const res = [...parsedN1];
+      let p1_ = parsedM - 1, p2_ = parsedN - 1, p_ = parsedM + parsedN - 1;
+      while(p2_ >= 0) {
+        if(p1_ >= 0 && res[p1_] > parsedN2[p2_]) res[p_--] = res[p1_--];
+        else res[p_--] = parsedN2[p2_--];
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        n1: parsedN1, m: parsedM, n2: parsedN2, n: parsedN,
+        input: formattedLabel,
+        output: JSON.stringify(res),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums1(parsedN1); setM(parsedM); setNums2(parsedN2); setN(parsedN);
+      setTimeline(generateTimeline(parsedN1, parsedM, parsedN2, parsedN));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums1 = [1,2,3,0,0,0], m = 3, nums2 = [2,5,6], n = 3");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\
+        // Setup based on: ${clean}\
+    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\
+    # Setup based on: ${clean}`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -86,26 +198,7 @@ export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Merge Sorted Array" lcNum="88" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={[
-            { 
-              label: 'Example 1', 
-              input: 'nums1 = [1,2,3,0,0,0], m = 3, nums2 = [2,5,6], n = 3', 
-              output: '[1,2,2,3,5,6]', 
-              explanation: <>The arrays we are merging are [1,2,3] and [2,5,6].<br/>The result of the merge is [1,2,2,3,5,6] with the underlined elements coming from nums1.</> 
-            },
-            { 
-              label: 'Example 2', 
-              input: 'nums1 = [1], m = 1, nums2 = [], n = 0', 
-              output: '[1]', 
-              explanation: <>The arrays we are merging are [1] and [].<br/>The result of the merge is [1].</> 
-            },
-            { 
-              label: 'Example 3', 
-              input: 'nums1 = [0], m = 0, nums2 = [1], n = 1', 
-              output: '[1]', 
-              explanation: <>The arrays we are merging are [] and [1].<br/>The result of the merge is [1].<br/>Note that because m = 0, there are no elements in nums1. The 0 is only there to ensure the merge result can fit in nums1.</> 
-            }
-          ]}
+          examples={examples}
           constraints={<>
             <div><code>nums1.length == m + n</code></div>
             <div><code>nums2.length == n</code></div>
@@ -116,6 +209,30 @@ export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
           </>}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const ex = examples[idx];
+                if(ex.n1) {
+                  setNums1(ex.n1); setM(ex.m); setNums2(ex.n2); setN(ex.n);
+                  setTimeline(generateTimeline(ex.n1, ex.m, ex.n2, ex.n));
+                } else {
+                  setTimeline(generateTimeline([1,2,3,0,0,0], 3, [2,5,6], 3));
+                }
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -128,26 +245,7 @@ export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
         <div style={{ marginBottom: '24px' }}>
           <ProblemStatement 
             statement={PROBLEM_STATEMENT}
-            examples={[
-              { 
-                label: 'Example 1', 
-                input: 'nums1 = [1,2,3,0,0,0], m = 3, nums2 = [2,5,6], n = 3', 
-                output: '[1,2,2,3,5,6]', 
-                explanation: <>The arrays we are merging are [1,2,3] and [2,5,6].<br/>The result of the merge is [1,2,2,3,5,6] with the underlined elements coming from nums1.</> 
-              },
-              { 
-                label: 'Example 2', 
-                input: 'nums1 = [1], m = 1, nums2 = [], n = 0', 
-                output: '[1]', 
-                explanation: <>The arrays we are merging are [1] and [].<br/>The result of the merge is [1].</> 
-              },
-              { 
-                label: 'Example 3', 
-                input: 'nums1 = [0], m = 0, nums2 = [1], n = 1', 
-                output: '[1]', 
-                explanation: <>The arrays we are merging are [] and [1].<br/>The result of the merge is [1].<br/>Note that because m = 0, there are no elements in nums1. The 0 is only there to ensure the merge result can fit in nums1.</> 
-              }
-            ]}
+            examples={examples}
             constraints={<>
               <div><code>nums1.length == m + n</code></div>
               <div><code>nums2.length == n</code></div>
@@ -156,6 +254,26 @@ export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
               <div><code>-10⁹ &lt;= nums1[i], nums2[j] &lt;= 10⁹</code></div>
               <div style={{ marginTop: '12px', color: 'var(--text)' }}><strong>Follow up:</strong> Can you come up with an algorithm that runs in <code>O(m + n)</code> time?</div>
             </>}
+          />
+          <ExamplePicker 
+            examples={examples} 
+            activeEx={activeEx} 
+            onSelect={idx => { 
+              setActiveEx(idx); 
+              const ex = examples[idx];
+              if(ex.n1) {
+                setNums1(ex.n1); setM(ex.m); setNums2(ex.n2); setN(ex.n);
+                setTimeline(generateTimeline(ex.n1, ex.m, ex.n2, ex.n));
+              } else {
+                setTimeline(generateTimeline([1,2,3,0,0,0], 3, [2,5,6], 3));
+              }
+              reset(); 
+            }} 
+            onCustomInput={handleCustomInput}
+            onGenerateEdgeCase={async () => {
+              await new Promise(r => setTimeout(r, 1000));
+              return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+            }}
           />
         </div>
       )}

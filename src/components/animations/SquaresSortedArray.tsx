@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, ResultBanner, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -28,6 +28,68 @@ const EXAMPLES = [
   }
 ];
 
+const EDGE_CASES = [
+  "nums = [-5,-4,-3,-2,-1]",
+  "nums = [1,2,3,4,5]",
+  "nums = [-100,0,100]",
+  "nums = [-2,-1,0]"
+];
+
+const generateTimeline = (arr: number[]) => {
+  const timeline: any[] = [];
+  const nums = [...arr];
+  const n = nums.length;
+  const res = Array(n).fill(null);
+  let l = 0;
+  let r = n - 1;
+  let p = n - 1;
+  
+  timeline.push({
+    nums: [...nums], res: [...res],
+    l, r, p,
+    desc: "Initialize left pointer (l) at the start, right pointer (r) at the end, and p at the end of the result array.",
+    activeLines: [2, 3, 4],
+    logic: `<strong>Init:</strong> Set \`l = 0\`, \`r = ${n - 1}\`, and \`p = ${n - 1}\` (write backwards).`, logicClass: 'info', activeStep: 1
+  });
+
+  while (l <= r) {
+    if (Math.abs(nums[l]) > Math.abs(nums[r])) {
+      const sq = nums[l] * nums[l];
+      res[p] = sq;
+      timeline.push({
+        nums: [...nums], res: [...res],
+        l, r, p,
+        desc: `|${nums[l]}| > |${nums[r]}|, so square ${nums[l]} (${sq}) and place at result[p]. Increment l, decrement p.`,
+        activeLines: [5, 6, 7, 8],
+        logic: `|${nums[l]}| > |${nums[r]}|. <strong style="color:var(--pink)">(${nums[l]})² = ${sq}</strong>.<br/>Write ${sq} to result array. Move \`l\` right.`, logicClass: 'info', activeStep: 2
+      });
+      l++;
+    } else {
+      const sq = nums[r] * nums[r];
+      res[p] = sq;
+      timeline.push({
+        nums: [...nums], res: [...res],
+        l, r, p,
+        desc: `|${nums[r]}| >= |${nums[l]}|, so square ${nums[r]} (${sq}) and place at result[p]. Decrement r and p.`,
+        activeLines: [5, 6, 10, 11],
+        logic: `|${nums[r]}| >= |${nums[l]}|. <strong style="color:var(--sky)">(${nums[r]})² = ${sq}</strong>.<br/>Write ${sq} to result array. Move \`r\` left.`, logicClass: 'info', activeStep: 2
+      });
+      r--;
+    }
+    p--;
+  }
+
+  timeline.push({
+    nums: [...nums], res: [...res],
+    l, r, p,
+    desc: "l > r. The loop terminates and the result array is fully populated.",
+    activeLines: [13],
+    logic: '`l` > `r`. Array fully processed.<br/><strong style="color:var(--green)">Done!</strong>', logicClass: 'success', activeStep: 3
+  });
+
+  return timeline;
+};
+
 const CONSTRAINTS = (
   <>
     <div><code>1 &lt;= nums.length &lt;= 10⁴</code></div>
@@ -48,60 +110,69 @@ const DEFAULT_PYTHON = `class Solution:\n    def sortedSquares(self, nums) -> li
 export default function SquaresSortedArray({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
   
-  const timeline = [
-    {
-      nums: [-4, -1, 0, 3, 10], res: [null, null, null, null, null],
-      l: 0, r: 4, p: 4,
-      desc: "Initialize left pointer (l) at the start, right pointer (r) at the end, and p at the end of the result array.",
-      activeLines: [2, 3, 4],
-      logic: '<strong>Init:</strong> Set `l = 0`, `r = 4`, and `p = 4` (write backwards).', logicClass: 'info', activeStep: 1
-    },
-    {
-      nums: [-4, -1, 0, 3, 10], res: [null, null, null, null, 100],
-      l: 0, r: 3, p: 3,
-      desc: "|10| > |-4|, so square 10 (100) and place at result[p]. Decrement r and p.",
-      activeLines: [5, 6, 10, 11],
-      logic: '|10| > |-4|. <strong style="color:var(--sky)">10² = 100</strong>.<br/>Write 100 to result array. Move `r` left.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, 0, 3, 10], res: [null, null, null, 16, 100],
-      l: 1, r: 3, p: 2,
-      desc: "|-4| > |3|, so square -4 (16) and place at result[p]. Increment l, decrement p.",
-      activeLines: [5, 6, 7, 8],
-      logic: '|-4| > |3|. <strong style="color:var(--pink)">(-4)² = 16</strong>.<br/>Write 16 to result array. Move `l` right.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, 0, 3, 10], res: [null, null, 9, 16, 100],
-      l: 1, r: 2, p: 1,
-      desc: "|3| > |-1|, so square 3 (9) and place at result[p]. Decrement r and p.",
-      activeLines: [5, 6, 10, 11],
-      logic: '|3| > |-1|. <strong style="color:var(--sky)">3² = 9</strong>.<br/>Write 9 to result array. Move `r` left.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, 0, 3, 10], res: [null, 1, 9, 16, 100],
-      l: 2, r: 2, p: 0,
-      desc: "|-1| > |0|, so square -1 (1) and place at result[p]. Increment l, decrement p.",
-      activeLines: [5, 6, 7, 8],
-      logic: '|-1| > |0|. <strong style="color:var(--pink)">(-1)² = 1</strong>.<br/>Write 1 to result array. Move `l` right.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, 0, 3, 10], res: [0, 1, 9, 16, 100],
-      l: 2, r: 1, p: -1,
-      desc: "|0| >= |0|, square 0 (0) and place at result[p].",
-      activeLines: [5, 6, 7, 8],
-      logic: '|0| >= |0|. <strong style="color:var(--pink)">0² = 0</strong>.<br/>Write 0 to result array. Move `l` right.', logicClass: 'info', activeStep: 2
-    },
-    {
-      nums: [-4, -1, 0, 3, 10], res: [0, 1, 9, 16, 100],
-      l: 2, r: 1, p: -1,
-      desc: "l > r. The loop terminates and the result array is fully populated.",
-      activeLines: [13],
-      logic: '`l` > `r`. Array fully processed.<br/><strong style="color:var(--green)">Done!</strong>', logicClass: 'success', activeStep: 3
-    }
-  ];
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [nums, setNums] = useState([-4, -1, 0, 3, 10]);
+  const [timeline, setTimeline] = useState(() => generateTimeline([-4, -1, 0, 3, 10]));
 
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(timeline.length);
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
   const current = timeline[step];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      
+      const n = parsed.length;
+      const res = Array(n).fill(0);
+      let l = 0, r = n - 1, p = n - 1;
+      while (l <= r) {
+        if (Math.abs(parsed[l]) > Math.abs(parsed[r])) {
+          res[p] = parsed[l] * parsed[l];
+          l++;
+        } else {
+          res[p] = parsed[r] * parsed[r];
+          r--;
+        }
+        p--;
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        nums: parsed,
+        input: formattedLabel,
+        output: `[${res.join(',')}]`,
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [-4,-1,0,3,10]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        int[] res = sortedSquares(nums);\n        System.out.println(java.util.Arrays.toString(res));\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    nums = ${clean}\n    res = Solution().sortedSquares(nums)\n    print(res)`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -109,10 +180,31 @@ export default function SquaresSortedArray({ onBack }: { onBack?: () => void }) 
         <VPHeader title="Squares of a Sorted Array" lcNum="977" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const ex = examples[idx];
+                const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+                setNums(inputArr);
+                setTimeline(generateTimeline(inputArr));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -123,7 +215,24 @@ export default function SquaresSortedArray({ onBack }: { onBack?: () => void }) 
       <VPHeader title="Squares of a Sorted Array" lcNum="977" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            const ex = examples[idx];
+            const inputArr = ex.nums || JSON.parse(ex.input.replace('nums = ', ''));
+            setNums(inputArr);
+            setTimeline(generateTimeline(inputArr));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 

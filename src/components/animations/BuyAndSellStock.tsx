@@ -3,8 +3,8 @@ import { TrendingUp, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
-  StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  StepLogic, StepCard, CodePanel, 
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -30,6 +30,13 @@ const EXAMPLES = [
   }
 ];
 
+const EDGE_CASES = [
+  "prices = [1, 2, 3, 4, 5, 6, 7]",
+  "prices = [7, 6, 5, 4, 3, 2, 1]",
+  "prices = [1, 1, 1, 1, 1]",
+  "prices = [3, 2, 6, 5, 0, 3]"
+];
+
 const CONSTRAINTS = (
   <>
     <div><code>1 &lt;= prices.length &lt;= 10⁵</code></div>
@@ -45,9 +52,9 @@ const DEFAULT_JAVA = `class Main {\n    public static int maxProfit(int[] prices
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def maxProfit(self, prices: list[int]) -> int:\n        # Write your code here\n        pass`;
 
-const PRICES = [7, 1, 5, 3, 6, 4];
+const INITIAL_PRICES = [7, 1, 5, 3, 6, 4];
 
-const generateTimeline = () => {
+const generateTimeline = (pricesArr: number[]) => {
   const timeline: any[] = [];
   let L = 0; // Buy pointer
   let R = 1; // Sell pointer
@@ -57,35 +64,35 @@ const generateTimeline = () => {
     L, R, maxP, profit: 0,
     activeLines: [2, 3], activeStep: 1,
     desc: "Initialize the 'Buy' pointer at day 0, the 'Sell' pointer at day 1, and max profit to 0.",
-    logic: `<strong>Init:</strong> Buy at day 0 (price ${PRICES[0]}). Sell at day 1 (price ${PRICES[1]}).`, logicClass: 'info'
+    logic: `<strong>Init:</strong> Buy at day 0 (price ${pricesArr[0]}). Sell at day 1 (price ${pricesArr[1] || '-'}).`, logicClass: 'info'
   });
 
-  while (R < PRICES.length) {
-    if (PRICES[L] < PRICES[R]) {
-      const profit = PRICES[R] - PRICES[L];
+  while (R < pricesArr.length) {
+    if (pricesArr[L] < pricesArr[R]) {
+      const profit = pricesArr[R] - pricesArr[L];
       const oldMax = maxP;
       maxP = Math.max(maxP, profit);
       
       timeline.push({
         L, R, maxP, profit,
         activeLines: [5, 6, 7], activeStep: 2,
-        desc: `prices[Sell] (${PRICES[R]}) > prices[Buy] (${PRICES[L]}). Profitable! Calculate profit and update max.`,
-        logic: `Sell price (${PRICES[R]}) > Buy price (${PRICES[L]}).<br/>Profit = ${PRICES[R]} - ${PRICES[L]} = <strong>${profit}</strong>.<br/>${maxP > oldMax ? '<strong style="color:var(--green)">New max profit found!</strong>' : ''}`, logicClass: maxP > oldMax ? 'success' : 'info'
+        desc: `prices[Sell] (${pricesArr[R]}) > prices[Buy] (${pricesArr[L]}). Profitable! Calculate profit and update max.`,
+        logic: `Sell price (${pricesArr[R]}) > Buy price (${pricesArr[L]}).<br/>Profit = ${pricesArr[R]} - ${pricesArr[L]} = <strong>${profit}</strong>.<br/>${maxP > oldMax ? '<strong style="color:var(--green)">New max profit found!</strong>' : ''}`, logicClass: maxP > oldMax ? 'success' : 'info'
       });
     } else {
       timeline.push({
-        L, R, maxP, profit: PRICES[R] - PRICES[L],
+        L, R, maxP, profit: pricesArr[R] - pricesArr[L],
         activeLines: [8, 9], activeStep: 3,
-        desc: `prices[Sell] (${PRICES[R]}) <= prices[Buy] (${PRICES[L]}). Found a lower price, so we move our Buy pointer to Sell.`,
-        logic: `Sell price (${PRICES[R]}) <= Buy price (${PRICES[L]}).<br/><span style="color:var(--pink)">Found a cheaper day to buy!</span><br/>Move Buy to day ${R}.`, logicClass: 'info'
+        desc: `prices[Sell] (${pricesArr[R]}) <= prices[Buy] (${pricesArr[L]}). Found a lower price, so we move our Buy pointer to Sell.`,
+        logic: `Sell price (${pricesArr[R]}) <= Buy price (${pricesArr[L]}).<br/><span style="color:var(--pink)">Found a cheaper day to buy!</span><br/>Move Buy to day ${R}.`, logicClass: 'info'
       });
       L = R;
     }
     
     R++;
-    if (R < PRICES.length) {
+    if (R < pricesArr.length) {
       timeline.push({
-        L, R, maxP, profit: PRICES[R] - PRICES[L],
+        L, R, maxP, profit: pricesArr[R] - pricesArr[L],
         activeLines: [11], activeStep: 4,
         desc: `Advance the Sell pointer to the next day.`,
         logic: `Increment Sell to day ${R}.`, logicClass: 'info'
@@ -94,7 +101,7 @@ const generateTimeline = () => {
   }
 
   timeline.push({
-    L, R: PRICES.length, maxP, profit: 0,
+    L, R: pricesArr.length, maxP, profit: 0,
     activeLines: [13], activeStep: 5,
     desc: `Iterated through the entire array. The maximum profit is ${maxP}.`,
     logic: `<strong style="color:var(--green)">Success!</strong> Maximum profit is <strong>${maxP}</strong>.`, logicClass: 'success'
@@ -103,12 +110,65 @@ const generateTimeline = () => {
   return timeline;
 };
 
-const TIMELINE = generateTimeline();
-
 export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [prices, setPrices] = useState(INITIAL_PRICES);
+  const [timeline, setTimeline] = useState(() => generateTimeline(INITIAL_PRICES));
+
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
+  const current = timeline[step];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('prices = ')) clean = val.substring(9);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length < 2) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}prices = [ ${parsed.join(', ')} ]`;
+      
+      let maxP = 0;
+      let l = 0; let r = 1;
+      while(r < parsed.length) {
+        if(parsed[l] < parsed[r]) maxP = Math.max(maxP, parsed[r] - parsed[l]);
+        else l = r;
+        r++;
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        prices: parsed,
+        input: formattedLabel,
+        output: maxP.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setPrices(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: [7, 1, 5, 3, 6, 4]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('prices = ')) clean = clean.substring(9);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] prices = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        System.out.println(maxProfit(prices));\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    prices = ${clean}\n    print(Solution().maxProfit(prices))`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -116,10 +176,33 @@ export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Best Time to Buy and Sell Stock" lcNum="121" difficulty="Easy" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('prices = ')) pr = pr.substring(9);
+                const pArr = examples[idx].prices || JSON.parse(pr);
+                setPrices(pArr); 
+                setTimeline(generateTimeline(pArr));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -130,13 +213,32 @@ export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
       <VPHeader title="Best Time to Buy and Sell Stock" lcNum="121" difficulty="Easy" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            let pr = examples[idx].input;
+            if (pr.startsWith('✨ ')) pr = pr.substring(3);
+            if (pr.startsWith('prices = ')) pr = pr.substring(9);
+            const pArr = examples[idx].prices || JSON.parse(pr);
+            setPrices(pArr); 
+            setTimeline(generateTimeline(pArr));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={timeline.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<TrendingUp size={20} />} title="Sliding Window (Dynamic Left)"
               lines={["Use a 'Buy' pointer (Left) and 'Sell' pointer (Right).", "If the sell price drops below the buy price, we found a better day to buy! Move the Buy pointer all the way to the Sell pointer."]}
@@ -149,10 +251,10 @@ export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', gap: '8px', alignItems: 'flex-end', height: '180px' }}>
-                  {PRICES.map((price, i) => {
+                  {prices.map((price, i) => {
                     const isL = current.L === i;
-                    const isR = current.R === i && current.R < PRICES.length;
-                    const isInWindow = current.R < PRICES.length && i >= current.L && i <= current.R;
+                    const isR = current.R === i && current.R < prices.length;
+                    const isInWindow = current.R < prices.length && i >= current.L && i <= current.R;
                     
                     return (
                       <div key={i} className="array-block-wrapper" style={{ zIndex: 1, gap: '4px' }}>
@@ -189,15 +291,15 @@ export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
               <div className="state-grid">
                 <div className="stbox">
                   <div className="st-lbl">Buy (L)</div>
-                  <div className="st-val" style={{ color: 'var(--pink)' }}>Day {current.L} (${PRICES[current.L]})</div>
+                  <div className="st-val" style={{ color: 'var(--pink)' }}>Day {current.L} (${prices[current.L]})</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Sell (R)</div>
-                  <div className="st-val" style={{ color: 'var(--sky)' }}>{current.R < PRICES.length ? `Day ${current.R} ($${PRICES[current.R]})` : '-'}</div>
+                  <div className="st-val" style={{ color: 'var(--sky)' }}>{current.R < prices.length ? `Day ${current.R} ($${prices[current.R]})` : '-'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Current Profit</div>
-                  <div className="st-val" style={{ color: current.profit < 0 ? 'var(--hard)' : 'var(--easy)' }}>{current.R < PRICES.length ? current.profit : '-'}</div>
+                  <div className="st-val" style={{ color: current.profit < 0 ? 'var(--hard)' : 'var(--easy)' }}>{current.R < prices.length ? current.profit : '-'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Max Profit</div>
@@ -207,7 +309,7 @@ export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Scanning Prices"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === timeline.length - 1 ? "Done!" : "Scanning Prices"} desc={current.desc} step={step} maxSteps={timeline.length} isDone={step === timeline.length - 1} />
           </div>
         }
         right={

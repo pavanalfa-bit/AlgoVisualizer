@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, ResultBanner, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -28,6 +28,13 @@ const EXAMPLES = [
   }
 ];
 
+const EDGE_CASES = [
+  "height = [4,2,0,3,2,5]",
+  "height = [0,1,0,2,1,0,1,3,2,1,2,1]",
+  "height = [5,4,3,2,1]",
+  "height = [1,2,3,4,5]"
+];
+
 const CONSTRAINTS = (
   <>
     <div><code>n == height.length</code></div>
@@ -47,8 +54,10 @@ const DEFAULT_PYTHON = `class Solution:\n    def trap(self, height: list[int]) -
 const HEIGHTS = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1];
 
 // Dynamically generate the timeline to avoid manual hardcoding of 30+ steps
-const generateTimeline = () => {
+const generateTimeline = (arr: number[]) => {
   const steps: any[] = [];
+  const HEIGHTS = [...arr];
+  if (HEIGHTS.length === 0) return steps;
   let l = 0, r = HEIGHTS.length - 1;
   let lm = 0, rm = 0, w = 0;
   let waterMap = new Array(HEIGHTS.length).fill(0);
@@ -57,7 +66,7 @@ const generateTimeline = () => {
     l, r, lm, rm, w, map: [...waterMap],
     activeLines: [2, 3], activeStep: 1,
     desc: "Initialize pointers at ends, and max heights to 0.",
-    logic: '<strong>Init:</strong> `l` = 0, `r` = 11.<br/>`lm` = 0, `rm` = 0. Total Water = 0.', logicClass: 'info'
+    logic: '<strong>Init:</strong> `l` = 0, `r` = ' + (HEIGHTS.length - 1) + '.<br/>`lm` = 0, `rm` = 0. Total Water = 0.', logicClass: 'info'
   });
   
   while (l < r) {
@@ -126,12 +135,72 @@ const generateTimeline = () => {
   return steps;
 };
 
-const TIMELINE = generateTimeline();
-
 export default function TrappingRain({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [HEIGHTS, setHeights] = useState([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]);
+  const [timeline, setTimeline] = useState(() => generateTimeline([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]));
+
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(timeline.length);
+  const current = timeline[step] || timeline[timeline.length - 1];
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('height = ')) clean = val.substring(9);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}height = [${parsed.join(',')}]`;
+      
+      let l = 0, r = parsed.length - 1;
+      let lm = 0, rm = 0, w = 0;
+      while (l < r) {
+        if (parsed[l] < parsed[r]) {
+          if (parsed[l] >= lm) lm = parsed[l];
+          else w += lm - parsed[l];
+          l++;
+        } else {
+          if (parsed[r] >= rm) rm = parsed[r];
+          else w += rm - parsed[r];
+          r--;
+        }
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        nums: parsed,
+        input: formattedLabel,
+        output: w.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setHeights(parsed);
+      setTimeline(generateTimeline(parsed));
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: height = [0,1,0,2,1,0,1,3,2,1,2,1]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('height = ')) clean = clean.substring(9);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] height = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        int res = trap(height);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    height = ${clean}\n    res = Solution().trap(height)\n    print(res)`);
+    }
+  };
   
   if (activeTab === 'practice') {
     return (
@@ -139,10 +208,31 @@ export default function TrappingRain({ onBack }: { onBack?: () => void }) {
         <VPHeader title="Trapping Rain Water" lcNum="42" difficulty="Hard" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
+          examples={examples}
           constraints={CONSTRAINTS}
           defaultCodeJava={DEFAULT_JAVA}
           defaultCodePython={DEFAULT_PYTHON}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const ex = examples[idx];
+                const inputArr = ex.nums || JSON.parse(ex.input.replace('height = ', ''));
+                setHeights(inputArr);
+                setTimeline(generateTimeline(inputArr));
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       </VisualizerLayout>
     );
@@ -153,13 +243,30 @@ export default function TrappingRain({ onBack }: { onBack?: () => void }) {
       <VPHeader title="Trapping Rain Water" lcNum="42" difficulty="Hard" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
+        <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+        <ExamplePicker 
+          examples={examples} 
+          activeEx={activeEx} 
+          onSelect={idx => { 
+            setActiveEx(idx); 
+            const ex = examples[idx];
+            const inputArr = ex.nums || JSON.parse(ex.input.replace('height = ', ''));
+            setHeights(inputArr);
+            setTimeline(generateTimeline(inputArr));
+            reset(); 
+          }} 
+          onCustomInput={handleCustomInput}
+          onGenerateEdgeCase={async () => {
+            await new Promise(r => setTimeout(r, 1000));
+            return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+          }}
+        />
       </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={timeline.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<CloudRain size={20} />} title="Two Pointers"
               lines={["Instead of finding max heights on both sides for every bar, maintain max heights from the left and right.", "Move the pointer that points to the lower max height inward, trapping water on that side securely."]}
@@ -257,7 +364,7 @@ export default function TrappingRain({ onBack }: { onBack?: () => void }) {
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
 
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Trapping Water"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === timeline.length - 1 ? "Done!" : "Trapping Water"} desc={current.desc} step={step} maxSteps={timeline.length} isDone={step === timeline.length - 1} />
           </div>
         }
         right={
