@@ -202,7 +202,7 @@ export default function StudentsUnableToEat({ onBack }: { onBack?: () => void })
                               style={{
                                 width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center',
                                 borderRadius: stu.val === 0 ? '50%' : '4px',
-                                background: isComparing ? 'rgba(78, 205, 196, 0.4)' : isRotating ? 'rgba(255, 193, 7, 0.3)' : 'rgba(78, 205, 196, 0.1)',
+                                background: isComparing ? 'var(--viz-sky-bg)' : isRotating ? 'var(--viz-yellow-bg)' : 'var(--viz-sky-bg)',
                                 border: `2px solid ${isComparing ? 'var(--sky)' : 'var(--border-strong)'}`,
                                 color: 'var(--text)', fontWeight: 'bold'
                               }}
@@ -241,7 +241,7 @@ export default function StudentsUnableToEat({ onBack }: { onBack?: () => void })
                               style={{
                                 width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center',
                                 borderRadius: san.val === 0 ? '50%' : '4px',
-                                background: isComparing ? 'rgba(255, 107, 107, 0.4)' : 'rgba(255, 107, 107, 0.1)',
+                                background: isComparing ? 'var(--viz-red-bg)' : 'var(--viz-red-bg)',
                                 border: `2px solid ${isComparing ? 'var(--pink)' : 'var(--border-strong)'}`,
                                 color: 'var(--text)', fontWeight: 'bold'
                               }}

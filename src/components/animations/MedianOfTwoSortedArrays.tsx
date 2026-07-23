@@ -206,15 +206,15 @@ export default function MedianOfTwoSortedArrays({ onBack }: { onBack?: () => voi
                       let border = 'var(--border-strong)';
                       
                       if (current.mid1 !== -1) {
-                        bg = isLeft ? 'rgba(78, 205, 196, 0.2)' : 'rgba(255, 107, 107, 0.2)';
+                        bg = isLeft ? 'var(--viz-sky-bg)' : 'var(--viz-red-bg)';
                         border = isLeft ? 'var(--sky)' : 'var(--pink)';
                       }
                       if (['fetch_values', 'compare_cross'].includes(current.phase) && (isL1 || isR1)) {
-                         bg = 'rgba(255, 193, 7, 0.4)';
+                         bg = 'var(--viz-yellow-bg)';
                          border = 'var(--warning)';
                       }
                       if (current.phase.startsWith('found') && (isL1 || isR1)) {
-                         bg = 'rgba(34, 197, 94, 0.4)';
+                         bg = 'var(--viz-green-bg)';
                          border = 'var(--green)';
                       }
 
@@ -262,15 +262,15 @@ export default function MedianOfTwoSortedArrays({ onBack }: { onBack?: () => voi
                       let border = 'var(--border-strong)';
                       
                       if (current.mid2 !== -1) {
-                        bg = isLeft ? 'rgba(78, 205, 196, 0.2)' : 'rgba(255, 107, 107, 0.2)';
+                        bg = isLeft ? 'var(--viz-sky-bg)' : 'var(--viz-red-bg)';
                         border = isLeft ? 'var(--sky)' : 'var(--pink)';
                       }
                       if (['fetch_values', 'compare_cross'].includes(current.phase) && (isL2 || isR2)) {
-                         bg = 'rgba(255, 193, 7, 0.4)';
+                         bg = 'var(--viz-yellow-bg)';
                          border = 'var(--warning)';
                       }
                       if (current.phase.startsWith('found') && (isL2 || isR2)) {
-                         bg = 'rgba(34, 197, 94, 0.4)';
+                         bg = 'var(--viz-green-bg)';
                          border = 'var(--green)';
                       }
 

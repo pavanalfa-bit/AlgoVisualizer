@@ -10,9 +10,16 @@ import {
 } from './VisualizerLayout';
 
 const EXAMPLES: any[] = [
-  { label: '[-4,-2,1,4,8]', nums: [-4,-2,1,4,8], output: '1' },
-  { label: '[2,-1,1]', nums: [2,-1,1], output: '1' },
-  { label: '[-100,-100]', nums: [-100,-100], output: '-100' },
+  { label: 'nums = [-4,-2,1,4,8]', input: 'nums = [-4,-2,1,4,8]', nums: [-4,-2,1,4,8], output: '1', explanation: <></> },
+  { label: 'nums = [2,-1,1]', input: 'nums = [2,-1,1]', nums: [2,-1,1], output: '1', explanation: <></> },
+  { label: 'nums = [-100,-100]', input: 'nums = [-100,-100]', nums: [-100,-100], output: '-100', explanation: <></> },
+];
+
+const EDGE_CASES = [
+  "nums = [100000, -100000]",
+  "nums = [0, 1, 2, 3]",
+  "nums = [-5, -5, -5, -5]",
+  "nums = [10, -10, 5, -5, 2, -2]"
 ];
 
 const CODE_JAVA = [
@@ -43,9 +50,59 @@ const CODE_PY = [
 ];
 
 export function ClosestNumberToZero({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(EXAMPLES[0].nums);
   const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      let closest = parsed[0];
+      for (const num of parsed) {
+        let dist = Math.abs(num);
+        let closestDist = Math.abs(closest);
+        if (dist < closestDist || (dist === closestDist && num > closest)) {
+          closest = num;
+        }
+      }
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        nums: parsed,
+        output: closest.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [-4,-2,1,4,8]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        int res = findClosestNumber(nums);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    nums = ${clean}\n    res = Solution().findClosestNumber(nums)\n    print(res)`);
+    }
+  };
 
   // Pre-compute steps
   const steps: any[] = [];
@@ -148,8 +205,25 @@ export function ClosestNumberToZero({ onBack }: { onBack?: () => void }) {
       
       {tab === 'visualizer' ? (
         <>
-          <ProblemStatement {...problemProps} />
-          <ExamplePicker examples={EXAMPLES} activeEx={activeEx} onSelect={idx => { setActiveEx(idx); setNums(EXAMPLES[idx].nums); reset(); }} />
+          <ProblemStatement {...problemProps} examples={examples} />
+          <ExamplePicker 
+            examples={examples} 
+            activeEx={activeEx} 
+            onSelect={idx => { 
+              setActiveEx(idx); 
+              let pr = examples[idx].input;
+              if (pr.startsWith('✨ ')) pr = pr.substring(3);
+              if (pr.startsWith('nums = ')) pr = pr.substring(7);
+              const inputArr = examples[idx].nums || JSON.parse(pr);
+              setNums(inputArr); 
+              reset(); 
+            }} 
+            onCustomInput={handleCustomInput}
+            onGenerateEdgeCase={async () => {
+              await new Promise(r => setTimeout(r, 1000));
+              return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+            }}
+          />
 
           <VPBody 
             left={
@@ -172,7 +246,7 @@ export function ClosestNumberToZero({ onBack }: { onBack?: () => void }) {
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               border: '2px solid', borderRadius: '8px',
                               fontWeight: 'bold', fontSize: '1rem',
-                              background: isCurr ? 'rgba(78, 205, 196, 0.2)' : 'var(--surface)',
+                              background: isCurr ? 'var(--viz-sky-bg)' : 'var(--surface)',
                               borderColor: isCurr ? 'var(--cyan)' : 'var(--border)',
                               color: isCurr ? 'var(--cyan)' : 'var(--text)'
                             }}
@@ -232,26 +306,32 @@ export function ClosestNumberToZero({ onBack }: { onBack?: () => void }) {
       ) : (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
-          examples={problemProps.examples}
+          examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`class Main {
-    public static int findClosestNumber(int[] nums) {
-        // Write your solution here
-        return 0;
-    }
-
-    public static void main(String[] args) {
-        int[] nums = {-4,-2,1,4,8};
-        System.out.println("Closest to zero: " + findClosestNumber(nums));
-    }
-}`}
-          defaultCodePython={`def findClosestNumber(nums):
-    # Write your solution here
-    pass
-
-if __name__ == "__main__":
-    nums = [-4,-2,1,4,8]
-    print(f"Closest to zero: {findClosestNumber(nums)}")`}
+          defaultCodeJava={`class Main {\n    public static int findClosestNumber(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {-4,-2,1,4,8};\n        System.out.println("Output: " + findClosestNumber(nums));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def findClosestNumber(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [-4,-2,1,4,8]\n    print(f"Output: {Solution().findClosestNumber(nums)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('nums = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].nums || JSON.parse(pr);
+                setNums(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       )}
     </VisualizerLayout>

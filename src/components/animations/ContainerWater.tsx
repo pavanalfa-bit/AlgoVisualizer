@@ -259,7 +259,7 @@ export default function ContainerWater({ onBack }: { onBack?: () => void }) {
                         left: `calc(50% - ${(heights.length * 58) / 2}px + ${current.l * 58 + 29}px)`,
                         width: `calc(${current.r - current.l} * 58px)`,
                         height: `${Math.min(heights[current.l], heights[current.r]) * 20}px`,
-                        background: 'rgba(78, 205, 196, 0.3)',
+                        background: 'var(--viz-sky-bg)',
                         borderTop: '2px solid rgba(78, 205, 196, 0.8)',
                         zIndex: 0,
                         transition: 'all 0.4s'

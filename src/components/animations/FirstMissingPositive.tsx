@@ -339,7 +339,7 @@ export default function FirstMissingPositive({ onBack }: { onBack?: () => void }
                             style={{
                               width: '48px',
                               height: '48px',
-                              background: isScan && !isCorrect ? 'rgba(255, 107, 107, 0.2)' : isCorrect ? 'rgba(34, 197, 94, 0.15)' : 'var(--surface)',
+                              background: isScan && !isCorrect ? 'var(--viz-red-bg)' : isCorrect ? 'rgba(34, 197, 94, 0.15)' : 'var(--surface)',
                               borderColor: isTarget ? 'var(--pink)' : isScan && !isCorrect ? 'var(--hard)' : isI ? 'var(--sky)' : isCorrect ? 'var(--easy)' : 'var(--border)',
                               color: 'var(--text)',
                               fontSize: '1.2rem',

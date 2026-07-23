@@ -313,7 +313,7 @@ export default function ValidPalindrome({ onBack }: { onBack?: () => void }) {
                           className={`array-block ${isL || isR || isError ? 'highlight' : ''}`}
                           style={{
                             width: '40px', height: '40px',
-                            background: isError ? 'rgba(255, 107, 107, 0.2)' : isL ? 'rgba(78, 205, 196, 0.2)' : isR ? 'rgba(255, 107, 107, 0.15)' : isProcessed ? 'var(--surface2)' : 'var(--surface)',
+                            background: isError ? 'var(--viz-red-bg)' : isL ? 'var(--viz-sky-bg)' : isR ? 'rgba(255, 107, 107, 0.15)' : isProcessed ? 'var(--surface2)' : 'var(--surface)',
                             borderColor: isError ? 'var(--pink)' : isL ? 'var(--sky)' : isR ? 'var(--pink)' : isProcessed ? 'var(--border-strong)' : 'var(--border)',
                             color: isAlpha ? 'var(--text)' : 'var(--muted)',
                             opacity: isAlpha ? 1 : 0.5,

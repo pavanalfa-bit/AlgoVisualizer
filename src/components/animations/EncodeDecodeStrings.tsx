@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -15,18 +15,15 @@ const PROBLEM_STATEMENT = (
 );
 
 const EXAMPLES = [
-  { 
-    label: 'Example 1', 
-    input: 'strs = ["lint","code","love","you"]', 
-    output: '["lint","code","love","you"]',
-    explanation: <>One possible encode method is: "4#lint4#code4#love3#you"</>
-  },
-  { 
-    label: 'Example 2', 
-    input: 'strs = ["we", "say", ":", "yes"]', 
-    output: '["we", "say", ":", "yes"]',
-    explanation: <>One possible encode method is: "2#we3#say1#:3#yes"</>
-  }
+  { label: 'strs = ["lint","code","love","you"]', input: 'strs = ["lint","code","love","you"]', strs: ["lint","code","love","you"], output: '["lint","code","love","you"]', explanation: <>One possible encode method is: "4#lint4#code4#love3#you"</> },
+  { label: 'strs = ["we", "say", ":", "yes"]', input: 'strs = ["we", "say", ":", "yes"]', strs: ["we", "say", ":", "yes"], output: '["we", "say", ":", "yes"]', explanation: <>One possible encode method is: "2#we3#say1#:3#yes"</> }
+];
+
+const EDGE_CASES = [
+  'strs = [""]',
+  'strs = ["", ""]',
+  'strs = ["#", "##", "###"]',
+  'strs = ["123", "456", "789"]'
 ];
 
 const CONSTRAINTS = (
@@ -45,25 +42,70 @@ const DEFAULT_JAVA = `public class Solution {\n    public String encode(List<Str
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def encode(self, strs: list[str]) -> str:\n        # Write your code here\n        pass\n\n    def decode(self, s: str) -> list[str]:\n        # Write your code here\n        pass`;
 
-const STRS = ["lint", "c#de", "you"];
+export default function EncodeDecodeStrings({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [strs, setStrs] = useState(EXAMPLES[0].strs);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
 
-const generateTimeline = () => {
-  const timeline: any[] = [];
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('strs = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || (parsed.length > 0 && typeof parsed[0] !== 'string')) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}strs = ${JSON.stringify(parsed)}`;
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        strs: parsed,
+        output: JSON.stringify(parsed),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setStrs(parsed);
+      reset();
+    } catch (e) {
+      alert('Invalid format! Please use: strs = ["a","b"]');
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('strs = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      let javaArr = clean.replace(/\[/g, 'Arrays.asList(').replace(/\]/g, ')');
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        List<String> strs = new ArrayList<>(${javaArr});\n        Solution sol = new Solution();\n        String encoded = sol.encode(strs);\n        System.out.println(sol.decode(encoded));\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    strs = ${clean}\n    sol = Solution()\n    encoded = sol.encode(strs)\n    print(sol.decode(encoded))`);
+    }
+  };
+
+  const steps: any[] = [];
   
   let encoded = "";
-  timeline.push({
+  steps.push({
     phase: 'encode', currIdx: -1, encoded, decoded: [], decodePtr: -1, decodeJ: -1, currentLength: -1,
     activeLines: [2, 3], activeStep: 1,
     desc: "Phase 1: Encoding. Initialize an empty string.",
     logic: `<strong>Init Encode:</strong> encoded = ""`, logicClass: 'info'
   });
 
-  for (let i = 0; i < STRS.length; i++) {
-    const s = STRS[i];
+  for (let i = 0; i < strs.length; i++) {
+    const s = strs[i];
     const len = s.length;
     encoded += `${len}#${s}`;
     
-    timeline.push({
+    steps.push({
       phase: 'encode', currIdx: i, encoded, decoded: [], decodePtr: -1, decodeJ: -1, currentLength: -1,
       activeLines: [4, 5, 6], activeStep: 2,
       desc: `Encode string "${s}". Append its length (${len}), a delimiter '#', and the string itself.`,
@@ -71,14 +113,14 @@ const generateTimeline = () => {
     });
   }
 
-  timeline.push({
-    phase: 'encode', currIdx: STRS.length, encoded, decoded: [], decodePtr: -1, decodeJ: -1, currentLength: -1,
+  steps.push({
+    phase: 'encode', currIdx: strs.length, encoded, decoded: [], decodePtr: -1, decodeJ: -1, currentLength: -1,
     activeLines: [8], activeStep: 3,
     desc: `Encoding complete! The network transmits the string: "${encoded}".`,
     logic: `<strong>Encoded String:</strong> "${encoded}"`, logicClass: 'info'
   });
 
-  timeline.push({
+  steps.push({
     phase: 'decode', currIdx: -1, encoded, decoded: [], decodePtr: 0, decodeJ: -1, currentLength: -1,
     activeLines: [11, 12, 13], activeStep: 4,
     desc: "Phase 2: Decoding. Initialize an empty result list and a pointer `i` at index 0 of the encoded string.",
@@ -97,7 +139,7 @@ const generateTimeline = () => {
     const lengthStr = encoded.substring(i, j);
     const length = parseInt(lengthStr, 10);
     
-    timeline.push({
+    steps.push({
       phase: 'decode', currIdx: -1, encoded, decoded: [...decoded], decodePtr: i, decodeJ: j, currentLength: length,
       activeLines: [14, 15, 16], activeStep: 5,
       desc: `Scan forward to find the '#' delimiter at index ${j}. Parse the length integer: ${length}.`,
@@ -107,7 +149,7 @@ const generateTimeline = () => {
     const str = encoded.substring(j + 1, j + 1 + length);
     decoded.push(str);
     
-    timeline.push({
+    steps.push({
       phase: 'decode', currIdx: -1, encoded, decoded: [...decoded], decodePtr: i, decodeJ: j, currentLength: length,
       activeLines: [17, 18, 19], activeStep: 6,
       desc: `Extract substring of length ${length} starting after the delimiter (index ${j + 1} to ${j + 1 + length}). Found: "${str}".`,
@@ -117,7 +159,7 @@ const generateTimeline = () => {
     i = j + 1 + length;
     
     if (i < encoded.length) {
-      timeline.push({
+      steps.push({
         phase: 'decode', currIdx: -1, encoded, decoded: [...decoded], decodePtr: i, decodeJ: -1, currentLength: -1,
         activeLines: [20], activeStep: 7,
         desc: `Move the pointer 'i' to the start of the next chunk (index ${i}).`,
@@ -126,50 +168,47 @@ const generateTimeline = () => {
     }
   }
 
-  timeline.push({
+  steps.push({
     phase: 'decode', currIdx: -1, encoded, decoded: [...decoded], decodePtr: i, decodeJ: -1, currentLength: -1,
     activeLines: [22], activeStep: 8,
     desc: `Reached the end of the encoded string. Decoding complete!`,
     logic: `<strong style="color:var(--green)">Success!</strong> Decoded ${decoded.length} strings.`, logicClass: 'success'
   });
 
-  return timeline;
-};
-
-const TIMELINE = generateTimeline();
-
-export default function EncodeDecodeStrings({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(steps.length);
+  const current = steps[step];
   
-  if (activeTab === 'practice') {
-    return (
-      <VisualizerLayout>
-        <VPHeader title="Encode and Decode Strings" lcNum="271" difficulty="Medium" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-        <PracticeWorkspace 
-          problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
-          constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
-        />
-      </VisualizerLayout>
-    );
-  }
-
   return (
     <VisualizerLayout>
       <VPHeader title="Encode and Decode Strings" lcNum="271" difficulty="Medium" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
-      </div>
+      {activeTab === 'visualizer' ? (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('strs = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].strs || JSON.parse(pr);
+                setStrs(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={steps.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Binary size={20} />} title="Length Prefix (Chunked Transfer)"
               lines={["We cannot just use a delimiter like ',' because the strings might contain ','.", "Instead, we prefix each string with its length, followed by a delimiter (e.g., '5#hello').", "During decoding, we read the integer until we hit '#', then grab exactly that many characters!"]}
@@ -184,7 +223,7 @@ export default function EncodeDecodeStrings({ onBack }: { onBack?: () => void })
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '4px' }}>Input Array:</div>
                   <div className="array-container" style={{ gap: '8px', flexWrap: 'wrap' }}>
-                    {STRS.map((str, i) => {
+                    {strs.map((str: string, i: number) => {
                       const isCurr = current.currIdx === i;
                       const isProcessed = i < current.currIdx;
                       return (
@@ -193,8 +232,8 @@ export default function EncodeDecodeStrings({ onBack }: { onBack?: () => void })
                           className={`array-block ${isCurr ? 'highlight' : ''}`}
                           style={{
                             width: 'auto', padding: '0 16px', height: '40px',
-                            background: isCurr ? 'var(--surface2)' : isProcessed ? 'rgba(78, 205, 196, 0.1)' : 'var(--surface)',
-                            borderColor: isCurr ? 'var(--sky)' : isProcessed ? 'rgba(78, 205, 196, 0.5)' : 'var(--border)',
+                            background: isCurr ? 'var(--surface2)' : isProcessed ? 'var(--viz-sky-bg)' : 'var(--surface)',
+                            borderColor: isCurr ? 'var(--sky)' : isProcessed ? 'var(--viz-sky-bd)' : 'var(--border)',
                             color: 'var(--text)', borderRadius: '8px'
                           }}
                         >
@@ -233,13 +272,13 @@ export default function EncodeDecodeStrings({ onBack }: { onBack?: () => void })
                       let bg = 'var(--surface)';
                       let border = 'var(--border)';
                       if (isReadingLength) {
-                        bg = 'rgba(78, 205, 196, 0.2)';
+                        bg = 'var(--viz-sky-bg)';
                         border = 'var(--sky)';
                       } else if (isJ) {
-                        bg = 'rgba(255, 107, 107, 0.2)';
+                        bg = 'var(--viz-red-bg)';
                         border = 'var(--pink)';
                       } else if (isReadingString) {
-                        bg = 'rgba(34, 197, 94, 0.2)';
+                        bg = 'var(--viz-green-bg)';
                         border = 'var(--easy)';
                       } else if (idx < current.decodePtr) {
                         bg = 'var(--surface2)';
@@ -311,7 +350,7 @@ export default function EncodeDecodeStrings({ onBack }: { onBack?: () => void })
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Chunked Transfer"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === steps.length - 1 ? "Done!" : "Chunked Transfer"} desc={current.desc} step={step} maxSteps={steps.length} isDone={step === steps.length - 1} />
           </div>
         }
         right={
@@ -390,6 +429,38 @@ export default function EncodeDecodeStrings({ onBack }: { onBack?: () => void })
           </div>
         }
       />
+      </>
+      ) : (
+        <PracticeWorkspace 
+          problemStatement={PROBLEM_STATEMENT}
+          examples={examples}
+          constraints={CONSTRAINTS}
+          defaultCodeJava={`import java.util.*;\n\npublic class Solution {\n    public String encode(List<String> strs) {\n        // Write your code here\n        return "";\n    }\n\n    public List<String> decode(String str) {\n        // Write your code here\n        return new ArrayList<>();\n    }\n\n    public static void main(String[] args) {\n        List<String> strs = new ArrayList<>(Arrays.asList("lint","code","love","you"));\n        Solution sol = new Solution();\n        String encoded = sol.encode(strs);\n        System.out.println("Output: " + sol.decode(encoded));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def encode(self, strs: list[str]) -> str:\n        # Write your code here\n        pass\n\n    def decode(self, s: str) -> list[str]:\n        # Write your code here\n        pass\n\nif __name__ == "__main__":\n    strs = ["lint","code","love","you"]\n    sol = Solution()\n    encoded = sol.encode(strs)\n    print(f"Output: {sol.decode(encoded)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('strs = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].strs || JSON.parse(pr);
+                setStrs(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
+        />
+      )}
     </VisualizerLayout>
   );
 }

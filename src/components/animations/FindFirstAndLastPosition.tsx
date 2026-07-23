@@ -258,10 +258,10 @@ export default function FindFirstAndLastPosition({ onBack }: { onBack?: () => vo
                       border = 'var(--border-strong)';
                       opacity = 0.2;
                     } else if (isComparing) {
-                      bg = 'rgba(255, 193, 7, 0.2)';
+                      bg = 'var(--viz-yellow-bg)';
                       border = 'var(--warning)';
                     } else if (isMid) {
-                      bg = 'rgba(108, 142, 245, 0.2)';
+                      bg = 'var(--viz-blue-bg)';
                       border = 'var(--accent)';
                     }
                     
@@ -269,20 +269,20 @@ export default function FindFirstAndLastPosition({ onBack }: { onBack?: () => vo
                     if (isLeftBound) {
                       border = 'var(--sky)';
                       if (current.phase === 'done' || current.phase.startsWith('p2')) {
-                        bg = 'rgba(78, 205, 196, 0.2)';
+                        bg = 'var(--viz-sky-bg)';
                         opacity = 1;
                       }
                     }
                     if (isRightBound) {
                       border = 'var(--pink)';
                       if (current.phase === 'done') {
-                        bg = 'rgba(255, 107, 107, 0.2)';
+                        bg = 'var(--viz-red-bg)';
                         opacity = 1;
                       }
                     }
                     if (isLeftBound && isRightBound && current.phase === 'done') {
                        border = 'var(--green)';
-                       bg = 'rgba(34, 197, 94, 0.2)';
+                       bg = 'var(--viz-green-bg)';
                     }
 
                     return (

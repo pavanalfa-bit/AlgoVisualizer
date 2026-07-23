@@ -310,7 +310,7 @@ export default function TrappingRain({ onBack }: { onBack?: () => void }) {
                               animate={{ opacity: 1, height: `${waterHeight * 40}px` }}
                               style={{
                                 width: '36px',
-                                background: 'rgba(78, 205, 196, 0.6)',
+                                background: 'var(--viz-sky-bd)',
                                 borderTop: '2px solid rgba(78, 205, 196, 0.9)',
                               }}
                             />

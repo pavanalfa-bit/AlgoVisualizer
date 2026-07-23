@@ -336,7 +336,7 @@ export default function ThreeSum({ onBack }: { onBack?: () => void }) {
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', minHeight: '40px' }}>
                 {current.res.length === 0 && <div style={{ color: 'var(--muted)' }}>No triplets found yet.</div>}
                 {current.res.map((triplet, idx) => (
-                  <div key={idx} style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid #22c55e', color: '#4ade80', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold' }}>
+                  <div key={idx} style={{ background: 'var(--viz-green-bg)', border: '1px solid var(--viz-green-bd)', color: 'var(--viz-green-fg)', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold' }}>
                     [{triplet.join(', ')}]
                   </div>
                 ))}

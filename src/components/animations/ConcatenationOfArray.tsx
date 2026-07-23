@@ -10,9 +10,16 @@ import {
 } from './VisualizerLayout';
 
 const EXAMPLES: any[] = [
-  { label: '[1,2,1]', nums: [1,2,1], output: '[1,2,1,1,2,1]' },
-  { label: '[1,3,2,1]', nums: [1,3,2,1], output: '[1,3,2,1,1,3,2,1]' },
-  { label: '[1,2,3,4,5]', nums: [1,2,3,4,5], output: '[1,2,3,4,5,1,2,3,4,5]' },
+  { label: 'nums = [1,2,1]', input: 'nums = [1,2,1]', nums: [1,2,1], output: '[1,2,1,1,2,1]', explanation: <></> },
+  { label: 'nums = [1,3,2,1]', input: 'nums = [1,3,2,1]', nums: [1,3,2,1], output: '[1,3,2,1,1,3,2,1]', explanation: <></> },
+  { label: 'nums = [1,2,3,4,5]', input: 'nums = [1,2,3,4,5]', nums: [1,2,3,4,5], output: '[1,2,3,4,5,1,2,3,4,5]', explanation: <></> },
+];
+
+const EDGE_CASES = [
+  "nums = [1000]",
+  "nums = [0, 0, 0, 0]",
+  "nums = [9, 8, 7, 6, 5, 4, 3, 2, 1]",
+  "nums = [-1, -2, -3]"
 ];
 
 const CODE_JAVA = [
@@ -38,9 +45,52 @@ const CODE_PY = [
 ];
 
 export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(EXAMPLES[0].nums);
   const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      const res = [...parsed, ...parsed];
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        nums: parsed,
+        output: `[${res.join(',')}]`,
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [1,2,3]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        int[] res = getConcatenation(nums);\n        System.out.println(java.util.Arrays.toString(res));\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    nums = ${clean}\n    res = Solution().getConcatenation(nums)\n    print(res)`);
+    }
+  };
 
   const n = nums.length;
   const ansSize = 2 * n;
@@ -115,8 +165,25 @@ export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
       
       {tab === 'visualizer' ? (
         <>
-          <ProblemStatement {...problemProps} />
-          <ExamplePicker examples={EXAMPLES} activeEx={activeEx} onSelect={idx => { setActiveEx(idx); setNums(EXAMPLES[idx].nums); reset(); }} />
+          <ProblemStatement {...problemProps} examples={examples} />
+          <ExamplePicker 
+            examples={examples} 
+            activeEx={activeEx} 
+            onSelect={idx => { 
+              setActiveEx(idx); 
+              let pr = examples[idx].input;
+              if (pr.startsWith('✨ ')) pr = pr.substring(3);
+              if (pr.startsWith('nums = ')) pr = pr.substring(7);
+              const inputArr = examples[idx].nums || JSON.parse(pr);
+              setNums(inputArr); 
+              reset(); 
+            }} 
+            onCustomInput={handleCustomInput}
+            onGenerateEdgeCase={async () => {
+              await new Promise(r => setTimeout(r, 1000));
+              return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+            }}
+          />
 
           <VPBody 
             left={
@@ -138,9 +205,9 @@ export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             border: '2px solid', borderRadius: '8px',
                             fontWeight: 'bold', fontSize: '1.1rem',
-                            background: cs.currI === idx ? '#0e3d55' : 'var(--surface)',
-                            borderColor: cs.currI === idx ? 'var(--cyan)' : 'var(--border)',
-                            color: cs.currI === idx ? 'var(--cyan)' : 'var(--text)'
+                            background: cs.currI === idx ? 'var(--viz-sky-bg)' : 'var(--surface)',
+                            borderColor: cs.currI === idx ? 'var(--viz-sky-bd)' : 'var(--border)',
+                            color: cs.currI === idx ? 'var(--viz-sky-fg)' : 'var(--text)'
                           }}
                         >
                           {num}
@@ -164,9 +231,9 @@ export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               border: '2px solid', borderRadius: '8px',
                               fontWeight: 'bold', fontSize: '1.1rem',
-                              background: isHighlighted ? 'rgba(78, 205, 196, 0.1)' : (isFilled ? 'var(--grn-bg)' : 'var(--bg)'),
-                              borderColor: isHighlighted ? 'var(--cyan)' : (isFilled ? 'var(--green)' : 'var(--border)'),
-                              color: isHighlighted ? 'var(--cyan)' : (isFilled ? 'var(--green)' : 'var(--muted)')
+                              background: isHighlighted ? 'var(--viz-sky-bg)' : (isFilled ? 'var(--viz-green-bg)' : 'var(--surface2)'),
+                              borderColor: isHighlighted ? 'var(--viz-sky-bd)' : (isFilled ? 'var(--viz-green-bd)' : 'var(--border)'),
+                              color: isHighlighted ? 'var(--viz-sky-fg)' : (isFilled ? 'var(--viz-green-fg)' : 'var(--muted)')
                             }}
                           >
                             {val !== null ? val : '_'}
@@ -214,30 +281,32 @@ export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
       ) : (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
-          examples={problemProps.examples}
+          examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`import java.util.Arrays;
-
-class Main {
-    public static int[] getConcatenation(int[] nums) {
-        // Write your solution here
-        return new int[]{};
-    }
-
-    public static void main(String[] args) {
-        int[] nums = {1, 2, 1};
-        System.out.println("Input: " + Arrays.toString(nums));
-        System.out.println("Output: " + Arrays.toString(getConcatenation(nums)));
-    }
-}`}
-          defaultCodePython={`def getConcatenation(nums):
-    # Write your solution here
-    pass
-
-if __name__ == "__main__":
-    nums = [1, 2, 1]
-    print(f"Input: {nums}")
-    print(f"Output: {getConcatenation(nums)}")`}
+          defaultCodeJava={`import java.util.Arrays;\n\nclass Main {\n    public static int[] getConcatenation(int[] nums) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {1, 2, 1};\n        System.out.println("Input: " + Arrays.toString(nums));\n        System.out.println("Output: " + Arrays.toString(getConcatenation(nums)));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def getConcatenation(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [1, 2, 1]\n    print(f"Input: {nums}")\n    print(f"Output: {Solution().getConcatenation(nums)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('nums = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].nums || JSON.parse(pr);
+                setNums(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       )}
     </VisualizerLayout>

@@ -209,13 +209,13 @@ export default function BinarySearch({ onBack }: { onBack?: () => void }) {
                       border = 'var(--border-strong)';
                       opacity = 0.2; // Faded out entirely
                     } else if (isTarget) {
-                      bg = 'rgba(34, 197, 94, 0.2)';
+                      bg = 'var(--viz-green-bg)';
                       border = 'var(--green)';
                     } else if (isComparing) {
-                      bg = 'rgba(255, 193, 7, 0.2)';
+                      bg = 'var(--viz-yellow-bg)';
                       border = 'var(--warning)';
                     } else if (isMid) {
-                      bg = 'rgba(108, 142, 245, 0.2)';
+                      bg = 'var(--viz-blue-bg)';
                       border = 'var(--accent)';
                     }
 

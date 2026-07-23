@@ -191,7 +191,7 @@ export default function SearchInsertPosition({ onBack }: { onBack?: () => void }
                     {current.phase === 'insert_pos' && (
                       <motion.div 
                         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-                        style={{ position: 'absolute', right: '-160px', top: '10px', fontSize: '0.8rem', color: 'var(--sky)', background: 'rgba(78,205,196,0.2)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--sky)' }}
+                        style={{ position: 'absolute', right: '-160px', top: '10px', fontSize: '0.8rem', color: 'var(--sky)', background: 'var(--viz-sky-bg)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--sky)' }}
                       >
                         Insertion Index = {current.l}
                       </motion.div>
@@ -217,17 +217,17 @@ export default function SearchInsertPosition({ onBack }: { onBack?: () => void }
                       border = 'var(--border-strong)';
                       opacity = 0.2;
                     } else if (isTarget) {
-                      bg = 'rgba(34, 197, 94, 0.2)';
+                      bg = 'var(--viz-green-bg)';
                       border = 'var(--green)';
                     } else if (isComparing) {
-                      bg = 'rgba(255, 193, 7, 0.2)';
+                      bg = 'var(--viz-yellow-bg)';
                       border = 'var(--warning)';
                     } else if (isMid) {
-                      bg = 'rgba(108, 142, 245, 0.2)';
+                      bg = 'var(--viz-blue-bg)';
                       border = 'var(--accent)';
                     } else if (isInsertPos) {
                       border = 'var(--sky)';
-                      bg = 'rgba(78, 205, 196, 0.1)';
+                      bg = 'var(--viz-sky-bg)';
                       opacity = 1; // Highlight the insertion point explicitly
                     } else if (current.phase === 'insert_pos') {
                       opacity = 0.4;

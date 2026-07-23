@@ -228,13 +228,13 @@ export default function PalindromicSubstrings({ onBack }: { onBack?: () => void 
                     let border = 'var(--border)';
 
                     if (isMismatch) {
-                      bg = 'rgba(255, 107, 107, 0.2)';
+                      bg = 'var(--viz-red-bg)';
                       border = 'var(--pink)';
                     } else if (isMatch) {
-                      bg = 'rgba(34, 197, 94, 0.2)';
+                      bg = 'var(--viz-green-bg)';
                       border = 'var(--easy)';
                     } else if (isWithinExpansion) {
-                      bg = 'rgba(78, 205, 196, 0.2)';
+                      bg = 'var(--viz-sky-bg)';
                       border = 'var(--sky)';
                     } else if (isCenter && current.phase === 'center') {
                       bg = 'var(--surface2)';

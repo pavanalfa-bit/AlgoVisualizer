@@ -274,8 +274,8 @@ export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
                           style={{
                             width: '40px',
                             height: '40px',
-                            background: isDuplicate ? 'rgba(255, 107, 107, 0.2)' : isCurr ? 'var(--surface2)' : isProcessed ? 'rgba(78, 205, 196, 0.1)' : 'var(--surface)',
-                            borderColor: isDuplicate ? 'var(--pink)' : isCurr ? 'var(--sky)' : isProcessed ? 'rgba(78, 205, 196, 0.5)' : 'var(--border)',
+                            background: isDuplicate ? 'var(--viz-red-bg)' : isCurr ? 'var(--surface2)' : isProcessed ? 'var(--viz-sky-bg)' : 'var(--surface)',
+                            borderColor: isDuplicate ? 'var(--pink)' : isCurr ? 'var(--sky)' : isProcessed ? 'var(--viz-sky-bd)' : 'var(--border)',
                             color: 'var(--text)'
                           }}
                         >

@@ -223,10 +223,10 @@ export default function SplitArrayLargestSum({ onBack }: { onBack?: () => void }
                     let opacity = 1;
 
                     if (isActive) {
-                      bg = 'rgba(108, 142, 245, 0.4)';
+                      bg = 'var(--viz-blue-bg)';
                       border = 'var(--accent)';
                     } else if (isProcessed || isFullyProcessed) {
-                      bg = 'rgba(78, 205, 196, 0.2)';
+                      bg = 'var(--viz-sky-bg)';
                       border = 'var(--sky)';
                     }
 

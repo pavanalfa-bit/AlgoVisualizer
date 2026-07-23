@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -15,18 +15,14 @@ const PROBLEM_STATEMENT = (
 );
 
 const EXAMPLES = [
-  { 
-    label: 'Example 1', 
-    input: 's = "ABAB", k = 2', 
-    output: '4',
-    explanation: <>Replace the two 'A's with two 'B's or vice versa.</>
-  },
-  { 
-    label: 'Example 2', 
-    input: 's = "AABABBA", k = 1', 
-    output: '4',
-    explanation: <>Replace the one 'A' in the middle with 'B' and form "AABBBBA".<br/>The substring "BBBB" has the longest repeating letters, which is 4.</>
-  }
+  { label: 's = "ABAB", k = 2', input: 's = "ABAB", k = 2', s: "ABAB", k: 2, output: '4', explanation: <>Replace the two 'A's with two 'B's or vice versa.</> },
+  { label: 's = "AABABBA", k = 1', input: 's = "AABABBA", k = 1', s: "AABABBA", k: 1, output: '4', explanation: <>Replace the one 'A' in the middle with 'B' and form "AABBBBA".<br/>The substring "BBBB" has the longest repeating letters, which is 4.</> }
+];
+
+const EDGE_CASES = [
+  's = "AAAA", k = 0',
+  's = "ABCC", k = 1',
+  's = "XYZXYZ", k = 3'
 ];
 
 const CONSTRAINTS = (
@@ -45,29 +41,101 @@ const DEFAULT_JAVA = `class Main {\n    public static int characterReplacement(S
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def characterReplacement(self, s: str, k: int) -> int:\n        # Write your code here\n        pass`;
 
-const S = "AABABBA";
-const K = 1;
+export default function CharacterReplacement({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [s, setS] = useState(EXAMPLES[0].s);
+  const [K, setK] = useState(EXAMPLES[0].k);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
 
-const generateTimeline = () => {
-  const timeline: any[] = [];
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('✨ ')) clean = val.substring(3);
+      
+      const parts = clean.split(', k = ');
+      const sPart = parts[0].replace('s = ', '').trim();
+      const kPart = parts[1].trim();
+      
+      const parsedS = JSON.parse(sPart);
+      const parsedK = parseInt(kPart, 10);
+      
+      if (typeof parsedS !== 'string' || isNaN(parsedK)) {
+        throw new Error();
+      }
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}s = "${parsedS}", k = ${parsedK}`;
+      
+      let L = 0;
+      let maxL = 0;
+      let maxF = 0;
+      const counts: Record<string, number> = {};
+      for (let R = 0; R < parsedS.length; R++) {
+        const charR = parsedS[R];
+        counts[charR] = (counts[charR] || 0) + 1;
+        maxF = Math.max(maxF, counts[charR]);
+        if ((R - L + 1) - maxF > parsedK) {
+          counts[parsedS[L]]--;
+          L++;
+        }
+        maxL = Math.max(maxL, R - L + 1);
+      }
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        s: parsedS,
+        k: parsedK,
+        output: maxL.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setS(parsedS);
+      setK(parsedK);
+      reset();
+    } catch (e) {
+      alert('Invalid format! Please use: s = "ABAB", k = 2');
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    const parts = clean.split(', k = ');
+    const sPart = parts[0].replace('s = ', '').trim();
+    const kPart = parts[1].trim();
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        String s = ${sPart};\n        int k = ${kPart};\n        int res = characterReplacement(s, k);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    s = ${sPart}\n    k = ${kPart}\n    res = Solution().characterReplacement(s, k)\n    print(res)`);
+    }
+  };
+
+  const steps: any[] = [];
   let L = 0;
   let maxL = 0;
   let maxF = 0;
   const counts: Record<string, number> = {};
   
-  timeline.push({
+  steps.push({
     L: 0, R: 0, maxL: 0, maxF: 0, counts: { ...counts },
     activeLines: [2, 3, 4], activeStep: 1,
     desc: "Initialize Left and Right pointers. Create an empty frequency map.",
     logic: `<strong>Init:</strong> L = 0, R = 0, maxFrequency = 0.`, logicClass: 'info'
   });
 
-  for (let R = 0; R < S.length; R++) {
-    const charR = S[R];
+  for (let R = 0; R < s.length; R++) {
+    const charR = s[R];
     counts[charR] = (counts[charR] || 0) + 1;
     maxF = Math.max(maxF, counts[charR]);
     
-    timeline.push({
+    steps.push({
       L, R, maxL, maxF, counts: { ...counts },
       activeLines: [6, 7], activeStep: 2,
       desc: `Add '${charR}' to frequency map. Update maxFrequency in current window to ${maxF}.`,
@@ -77,7 +145,7 @@ const generateTimeline = () => {
     const windowLen = R - L + 1;
     let isValid = (windowLen - maxF) <= K;
     
-    timeline.push({
+    steps.push({
       L, R, maxL, maxF, counts: { ...counts },
       activeLines: [9], activeStep: 3,
       desc: `Check if window is valid: windowLength (${windowLen}) - maxFrequency (${maxF}) = ${windowLen - maxF}. Is this <= k (${K})?`,
@@ -85,10 +153,10 @@ const generateTimeline = () => {
     });
 
     if (!isValid) {
-      const charL = S[L];
+      const charL = s[L];
       counts[charL]--;
       L++;
-      timeline.push({
+      steps.push({
         L, R, maxL, maxF, counts: { ...counts },
         activeLines: [10, 11], activeStep: 4,
         desc: `Window is invalid! Shrink from the left by removing '${charL}' from frequency map and advancing L.`,
@@ -99,7 +167,7 @@ const generateTimeline = () => {
     const oldMax = maxL;
     maxL = Math.max(maxL, R - L + 1);
     
-    timeline.push({
+    steps.push({
       L, R, maxL, maxF, counts: { ...counts },
       activeLines: [13], activeStep: 5,
       desc: `Update maximum window length.`,
@@ -108,50 +176,53 @@ const generateTimeline = () => {
     });
   }
 
-  timeline.push({
-    L, R: S.length, maxL, maxF, counts: { ...counts },
+  steps.push({
+    L, R: s.length, maxL, maxF, counts: { ...counts },
     activeLines: [15], activeStep: 6,
     desc: `Iterated through the entire string. The maximum length is ${maxL}.`,
-    logic: `<strong style="color:var(--green)">Success!</strong> Maximum length is <strong>${maxL}</strong>.`, logicClass: 'success'
+    logic: `<strong style="color:var(--green)">Success!</strong> Maximum length is <strong>${maxL}</strong>.`, logicClass: 'success',
+    finalRes: `${maxL}`
   });
 
-  return timeline;
-};
-
-const TIMELINE = generateTimeline();
-
-export default function CharacterReplacement({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(steps.length);
+  const current = steps[step];
   
-  if (activeTab === 'practice') {
-    return (
-      <VisualizerLayout>
-        <VPHeader title="Longest Repeating Character Replacement" lcNum="424" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-        <PracticeWorkspace 
-          problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
-          constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
-        />
-      </VisualizerLayout>
-    );
-  }
-
   return (
     <VisualizerLayout>
       <VPHeader title="Longest Repeating Character Replacement" lcNum="424" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
-      </div>
+      {activeTab === 'visualizer' ? (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parts = clean.split(', k = ');
+                const sPart = parts[0].replace('s = ', '').trim();
+                const kPart = parts[1].trim();
+                const inputS = examples[idx].s || JSON.parse(sPart);
+                const inputK = examples[idx].k ?? parseInt(kPart, 10);
+                setS(inputS); 
+                setK(inputK);
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={steps.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Type size={20} />} title="Sliding Window + Frequency Map"
               lines={["Maintain a frequency map of characters in the current window.", "The number of characters we need to replace is (Window Length - Max Frequency).", "If this exceeds k, the window is invalid, so we shrink it from the left."]}
@@ -164,10 +235,10 @@ export default function CharacterReplacement({ onBack }: { onBack?: () => void }
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', gap: '4px', flexWrap: 'wrap' }}>
-                  {S.split('').map((char, i) => {
+                  {s.split('').map((char: string, i: number) => {
                     const isR = current.R === i;
                     const isL = current.L === i;
-                    const isInWindow = i >= current.L && i <= current.R && current.R < S.length;
+                    const isInWindow = i >= current.L && i <= current.R && current.R < s.length;
                     
                     return (
                       <div key={i} className="array-block-wrapper" style={{ zIndex: 1 }}>
@@ -180,8 +251,8 @@ export default function CharacterReplacement({ onBack }: { onBack?: () => void }
                           style={{
                             width: '40px',
                             height: '40px',
-                            background: isInWindow ? 'rgba(78, 205, 196, 0.2)' : 'var(--surface)',
-                            borderColor: isR ? 'var(--sky)' : isL ? 'var(--pink)' : isInWindow ? 'rgba(78, 205, 196, 0.8)' : 'var(--border)',
+                            background: isInWindow ? 'var(--viz-sky-bg)' : 'var(--surface)',
+                            borderColor: isR ? 'var(--sky)' : isL ? 'var(--pink)' : isInWindow ? 'var(--viz-sky-bd)' : 'var(--border)',
                             color: 'var(--text)',
                             fontSize: '1.2rem',
                             fontWeight: 'bold'
@@ -240,7 +311,7 @@ export default function CharacterReplacement({ onBack }: { onBack?: () => void }
               <div className="state-grid">
                 <div className="stbox">
                   <div className="st-lbl">Window Size</div>
-                  <div className="st-val">{current.R < S.length ? current.R - current.L + 1 : '-'}</div>
+                  <div className="st-val">{current.R < s.length ? current.R - current.L + 1 : '-'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Max Freq (maxF)</div>
@@ -248,7 +319,7 @@ export default function CharacterReplacement({ onBack }: { onBack?: () => void }
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">To Replace</div>
-                  <div className="st-val">{current.R < S.length ? (current.R - current.L + 1) - current.maxF : '-'}</div>
+                  <div className="st-val">{current.R < s.length ? (current.R - current.L + 1) - current.maxF : '-'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Max Length</div>
@@ -258,7 +329,7 @@ export default function CharacterReplacement({ onBack }: { onBack?: () => void }
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Sliding Window"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === steps.length - 1 ? "Done!" : "Sliding Window"} desc={current.desc} step={step} maxSteps={steps.length} isDone={step === steps.length - 1} />
           </div>
         }
         right={
@@ -321,6 +392,43 @@ export default function CharacterReplacement({ onBack }: { onBack?: () => void }
           </div>
         }
       />
+      </>
+      ) : (
+        <PracticeWorkspace 
+          problemStatement={PROBLEM_STATEMENT}
+          examples={examples}
+          constraints={CONSTRAINTS}
+          defaultCodeJava={`import java.util.*;\n\nclass Main {\n    public static int characterReplacement(String s, int k) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        String s = "ABAB";\n        int k = 2;\n        System.out.println("Output: " + characterReplacement(s, k));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def characterReplacement(self, s: str, k: int) -> int:\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    s = "ABAB"\n    k = 2\n    print(f"Output: {Solution().characterReplacement(s, k)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parts = clean.split(', k = ');
+                const sPart = parts[0].replace('s = ', '').trim();
+                const kPart = parts[1].trim();
+                const inputS = examples[idx].s || JSON.parse(sPart);
+                const inputK = examples[idx].k ?? parseInt(kPart, 10);
+                setS(inputS); 
+                setK(inputK);
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
+        />
+      )}
     </VisualizerLayout>
   );
 }

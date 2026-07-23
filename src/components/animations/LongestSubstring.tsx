@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -14,24 +14,15 @@ const PROBLEM_STATEMENT = (
 );
 
 const EXAMPLES = [
-  { 
-    label: 'Example 1', 
-    input: 's = "abcabcbb"', 
-    output: '3',
-    explanation: <>The answer is "abc", with the length of 3.</>
-  },
-  { 
-    label: 'Example 2', 
-    input: 's = "bbbbb"', 
-    output: '1',
-    explanation: <>The answer is "b", with the length of 1.</>
-  },
-  { 
-    label: 'Example 3', 
-    input: 's = "pwwkew"', 
-    output: '3',
-    explanation: <>The answer is "wke", with the length of 3.<br/>Notice that the answer must be a substring, "pwke" is a subsequence and not a substring.</>
-  }
+  { label: 's = "abcabcbb"', input: 's = "abcabcbb"', s: "abcabcbb", output: '3', explanation: <>The answer is "abc", with the length of 3.</> },
+  { label: 's = "bbbbb"', input: 's = "bbbbb"', s: "bbbbb", output: '1', explanation: <>The answer is "b", with the length of 1.</> },
+  { label: 's = "pwwkew"', input: 's = "pwwkew"', s: "pwwkew", output: '3', explanation: <>The answer is "wke", with the length of 3.<br/>Notice that the answer must be a substring, "pwke" is a subsequence and not a substring.</> }
+];
+
+const EDGE_CASES = [
+  's = ""',
+  's = "abcdef"',
+  's = "abba"'
 ];
 
 const CONSTRAINTS = (
@@ -49,26 +40,82 @@ const DEFAULT_JAVA = `class Main {\n    public static int lengthOfLongestSubstri
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def lengthOfLongestSubstring(self, s: str) -> int:\n        # Write your code here\n        pass`;
 
-const S = "abcabcbb";
+export default function LongestSubstring({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [s, setS] = useState(EXAMPLES[0].s);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
 
-const generateTimeline = () => {
-  const timeline: any[] = [];
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('s = ')) clean = val.substring(4);
+      const parsed = JSON.parse(clean);
+      if (typeof parsed !== 'string') throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}s = "${parsed}"`;
+      
+      let L = 0;
+      let maxL = 0;
+      const set = new Set<string>();
+      for (let R = 0; R < parsed.length; R++) {
+        while (set.has(parsed[R])) {
+          set.delete(parsed[L]);
+          L++;
+        }
+        set.add(parsed[R]);
+        maxL = Math.max(maxL, R - L + 1);
+      }
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        s: parsed,
+        output: maxL.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setS(parsed);
+      reset();
+    } catch (e) {
+      alert('Invalid format! Please use: s = "abc"');
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('s = ')) clean = clean.substring(4);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        String s = ${clean};\n        int res = lengthOfLongestSubstring(s);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    s = ${clean}\n    res = Solution().lengthOfLongestSubstring(s)\n    print(res)`);
+    }
+  };
+
+  const steps: any[] = [];
   let L = 0;
   let maxL = 0;
   const set = new Set<string>();
   
-  timeline.push({
+  steps.push({
     L: 0, R: 0, maxL: 0, setChars: [],
     activeLines: [2, 3, 4], activeStep: 1,
     desc: "Initialize Left and Right pointers to index 0. Create an empty character Set.",
     logic: `<strong>Init:</strong> L = 0, R = 0. Set is empty.`, logicClass: 'info'
   });
 
-  for (let R = 0; R < S.length; R++) {
-    const charR = S[R];
+  for (let R = 0; R < s.length; R++) {
+    const charR = s[R];
     
     // Check if character is in set
-    timeline.push({
+    steps.push({
       L, R, maxL, setChars: Array.from(set),
       activeLines: [6], activeStep: 2,
       desc: `Check if '${charR}' is already in our Set.`,
@@ -76,10 +123,10 @@ const generateTimeline = () => {
     });
 
     while (set.has(charR)) {
-      const charL = S[L];
+      const charL = s[L];
       set.delete(charL);
       L++;
-      timeline.push({
+      steps.push({
         L, R, maxL, setChars: Array.from(set),
         activeLines: [7, 8], activeStep: 3,
         desc: `'${charR}' is in the Set! Remove s[L] ('${charL}') from the Set and shrink the window from the left.`,
@@ -91,7 +138,7 @@ const generateTimeline = () => {
     const oldMax = maxL;
     maxL = Math.max(maxL, R - L + 1);
     
-    timeline.push({
+    steps.push({
       L, R, maxL, setChars: Array.from(set),
       activeLines: [10, 11], activeStep: 4,
       desc: `Add '${charR}' to the Set. Update max length.`,
@@ -100,50 +147,48 @@ const generateTimeline = () => {
     });
   }
 
-  timeline.push({
-    L, R: S.length, maxL, setChars: Array.from(set),
+  steps.push({
+    L, R: s.length, maxL, setChars: Array.from(set),
     activeLines: [13], activeStep: 5,
     desc: `Iterated through the entire string. The maximum substring length is ${maxL}.`,
-    logic: `<strong style="color:var(--green)">Success!</strong> Maximum length is <strong>${maxL}</strong>.`, logicClass: 'success'
+    logic: `<strong style="color:var(--green)">Success!</strong> Maximum length is <strong>${maxL}</strong>.`, logicClass: 'success',
+    finalRes: `${maxL}`
   });
 
-  return timeline;
-};
-
-const TIMELINE = generateTimeline();
-
-export default function LongestSubstring({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(steps.length);
+  const current = steps[step];
   
-  if (activeTab === 'practice') {
-    return (
-      <VisualizerLayout>
-        <VPHeader title="Longest Substring Without Repeating" lcNum="3" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-        <PracticeWorkspace 
-          problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
-          constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
-        />
-      </VisualizerLayout>
-    );
-  }
-
   return (
     <VisualizerLayout>
       <VPHeader title="Longest Substring Without Repeating" lcNum="3" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
-      </div>
+      {activeTab === 'visualizer' ? (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('s = ')) pr = pr.substring(4);
+                const inputStr = examples[idx].s || JSON.parse(pr);
+                setS(inputStr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={steps.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Type size={20} />} title="Sliding Window + Hash Set"
               lines={["Use a sliding window defined by L and R pointers.", "Expand R to add characters. If a duplicate is found, shrink L until the duplicate is removed from the window."]}
@@ -156,10 +201,10 @@ export default function LongestSubstring({ onBack }: { onBack?: () => void }) {
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', gap: '4px', flexWrap: 'wrap' }}>
-                  {S.split('').map((char, i) => {
+                  {s.split('').map((char: string, i: number) => {
                     const isR = current.R === i;
                     const isL = current.L === i;
-                    const isInWindow = i >= current.L && i <= current.R && current.R < S.length;
+                    const isInWindow = i >= current.L && i <= current.R && current.R < s.length;
                     
                     return (
                       <div key={i} className="array-block-wrapper" style={{ zIndex: 1 }}>
@@ -172,8 +217,8 @@ export default function LongestSubstring({ onBack }: { onBack?: () => void }) {
                           style={{
                             width: '40px',
                             height: '40px',
-                            background: isInWindow ? 'rgba(78, 205, 196, 0.2)' : 'var(--surface)',
-                            borderColor: isR ? 'var(--sky)' : isL ? 'var(--pink)' : isInWindow ? 'rgba(78, 205, 196, 0.8)' : 'var(--border)',
+                            background: isInWindow ? 'var(--viz-sky-bg)' : 'var(--surface)',
+                            borderColor: isR ? 'var(--sky)' : isL ? 'var(--pink)' : isInWindow ? 'var(--viz-sky-bd)' : 'var(--border)',
                             color: 'var(--text)',
                             fontSize: '1.2rem',
                             fontWeight: 'bold'
@@ -230,11 +275,11 @@ export default function LongestSubstring({ onBack }: { onBack?: () => void }) {
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">R (End)</div>
-                  <div className="st-val" style={{ color: 'var(--sky)' }}>{current.R < S.length ? current.R : '-'}</div>
+                  <div className="st-val" style={{ color: 'var(--sky)' }}>{current.R < s.length ? current.R : '-'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Window Size</div>
-                  <div className="st-val">{current.R < S.length ? current.R - current.L + 1 : '-'}</div>
+                  <div className="st-val">{current.R < s.length ? current.R - current.L + 1 : '-'}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Max Length</div>
@@ -244,7 +289,7 @@ export default function LongestSubstring({ onBack }: { onBack?: () => void }) {
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Sliding Window"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === steps.length - 1 ? "Done!" : "Sliding Window"} desc={current.desc} step={step} maxSteps={steps.length} isDone={step === steps.length - 1} />
           </div>
         }
         right={
@@ -303,6 +348,38 @@ export default function LongestSubstring({ onBack }: { onBack?: () => void }) {
           </div>
         }
       />
+      </>
+      ) : (
+        <PracticeWorkspace 
+          problemStatement={PROBLEM_STATEMENT}
+          examples={examples}
+          constraints={CONSTRAINTS}
+          defaultCodeJava={`import java.util.*;\n\nclass Main {\n    public static int lengthOfLongestSubstring(String s) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        String s = "abcabcbb";\n        System.out.println("Output: " + lengthOfLongestSubstring(s));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def lengthOfLongestSubstring(self, s: str) -> int:\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    s = "abcabcbb"\n    print(f"Output: {Solution().lengthOfLongestSubstring(s)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('s = ')) pr = pr.substring(4);
+                const inputStr = examples[idx].s || JSON.parse(pr);
+                setS(inputStr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
+        />
+      )}
     </VisualizerLayout>
   );
 }

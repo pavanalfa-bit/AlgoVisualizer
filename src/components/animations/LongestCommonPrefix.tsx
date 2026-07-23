@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -15,18 +15,15 @@ const PROBLEM_STATEMENT = (
 );
 
 const EXAMPLES = [
-  { 
-    label: 'Example 1', 
-    input: 'strs = ["flower","flow","flight"]', 
-    output: '"fl"',
-    explanation: <>The characters "f" and "l" are shared at the start of all three strings.</>
-  },
-  { 
-    label: 'Example 2', 
-    input: 'strs = ["dog","racecar","car"]', 
-    output: '""',
-    explanation: <>There is no common prefix among the input strings.</>
-  }
+  { label: 'strs = ["flower","flow","flight"]', input: 'strs = ["flower","flow","flight"]', strs: ["flower","flow","flight"], output: '"fl"', explanation: <>The characters "f" and "l" are shared at the start of all three strings.</> },
+  { label: 'strs = ["dog","racecar","car"]', input: 'strs = ["dog","racecar","car"]', strs: ["dog","racecar","car"], output: '""', explanation: <>There is no common prefix among the input strings.</> },
+  { label: 'strs = ["interstellar","internet","internal"]', input: 'strs = ["interstellar","internet","internal"]', strs: ["interstellar","internet","internal"], output: '"intern"', explanation: <>The prefix "intern" is shared by all.</> }
+];
+
+const EDGE_CASES = [
+  'strs = ["a"]',
+  'strs = ["", "b"]',
+  'strs = ["same", "same", "same"]'
 ];
 
 const CONSTRAINTS = (
@@ -45,110 +42,173 @@ const DEFAULT_JAVA = `class Main {\n    public static String longestCommonPrefix
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def longestCommonPrefix(self, strs: list[str]) -> str:\n        # Write your code here\n        pass`;
 
-const STRS = ["flower", "flow", "flight"];
+export default function LongestCommonPrefix({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [strs, setStrs] = useState(EXAMPLES[0].strs);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
 
-const generateTimeline = () => {
-  const timeline: any[] = [];
-  
-  if (STRS.length === 0) {
-    return [{ col: -1, row: -1, prefix: "", activeLines: [], activeStep: 1, desc: "Empty array, return empty string.", logic: "Empty array", logicClass: 'error' }];
-  }
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('strs = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || typeof parsed[0] !== 'string') throw new Error();
 
-  let prefix = "";
-  timeline.push({
-    col: -1, row: -1, prefix, isValidCol: true, isDone: false,
-    activeLines: [2, 3], activeStep: 1,
-    desc: "Start with an empty prefix string.",
-    logic: `<strong>Init:</strong> prefix = ""`, logicClass: 'info'
-  });
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}strs = ${JSON.stringify(parsed)}`;
+      
+      let prefix = "";
+      if (parsed.length > 0) {
+        let isDone = false;
+        for (let i = 0; i < parsed[0].length; i++) {
+          if (isDone) break;
+          const char = parsed[0][i];
+          for (let j = 0; j < parsed.length; j++) {
+            if (i === parsed[j].length || parsed[j][i] !== char) {
+              isDone = true;
+              break;
+            }
+          }
+          if (!isDone) prefix += char;
+        }
+      }
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        strs: parsed,
+        output: `"${prefix}"`,
+        explanation: <></>
+      };
 
-  const firstStr = STRS[0];
-  let isDone = false;
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setStrs(parsed);
+      reset();
+    } catch (e) {
+      alert('Invalid format! Please use: strs = ["a","b"]');
+    }
+  };
 
-  for (let i = 0; i < firstStr.length; i++) {
-    if (isDone) break;
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('strs = ')) clean = clean.substring(7);
     
-    const char = firstStr[i];
-    let isValidCol = true;
+    if (lang === 'java') {
+      let javaArr = clean.replace(/\[/g, '{').replace(/\]/g, '}');
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        String[] strs = new String[]${javaArr};\n        String res = longestCommonPrefix(strs);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    strs = ${clean}\n    res = Solution().longestCommonPrefix(strs)\n    print(res)`);
+    }
+  };
 
-    for (let j = 0; j < STRS.length; j++) {
-      timeline.push({
-        col: i, row: j, prefix, isValidCol: true, isDone: false,
-        activeLines: [4, 5, 6, 7], activeStep: 2,
-        desc: `Check if character at index ${i} in string ${j} ("${STRS[j]}") matches '${char}'.`,
-        logic: `Checking: strs[${j}][${i}] == <strong style="color:var(--sky)">'${char}'</strong>?`, logicClass: 'info'
-      });
+  const steps: any[] = [];
+  
+  if (strs.length === 0) {
+    steps.push({ col: -1, row: -1, prefix: "", activeLines: [], activeStep: 1, desc: "Empty array, return empty string.", logic: "Empty array", logicClass: 'error', finalRes: '""' });
+  } else {
+    let prefix = "";
+    steps.push({
+      col: -1, row: -1, prefix, isValidCol: true, isDone: false,
+      activeLines: [2, 3], activeStep: 1,
+      desc: "Start with an empty prefix string.",
+      logic: `<strong>Init:</strong> prefix = ""`, logicClass: 'info'
+    });
 
-      if (i === STRS[j].length || STRS[j][i] !== char) {
-        isValidCol = false;
-        timeline.push({
-          col: i, row: j, prefix, isValidCol: false, isDone: true,
-          activeLines: [8, 9], activeStep: 3,
-          desc: `Mismatch found at string ${j} ("${STRS[j]}"). The common prefix ends here.`,
-          logic: `<strong style="color:var(--pink)">Mismatch!</strong><br/>Prefix ends at "${prefix}".`, logicClass: 'error'
+    const firstStr = strs[0];
+    let isDone = false;
+
+    for (let i = 0; i < firstStr.length; i++) {
+      if (isDone) break;
+      
+      const char = firstStr[i];
+      let isValidCol = true;
+
+      for (let j = 0; j < strs.length; j++) {
+        steps.push({
+          col: i, row: j, prefix, isValidCol: true, isDone: false,
+          activeLines: [4, 5, 6, 7], activeStep: 2,
+          desc: `Check if character at index ${i} in string ${j} ("${strs[j]}") matches '${char}'.`,
+          logic: `Checking: strs[${j}][${i}] == <strong style="color:var(--sky)">'${char}'</strong>?`, logicClass: 'info'
         });
-        isDone = true;
-        break;
+
+        if (i === strs[j].length || strs[j][i] !== char) {
+          isValidCol = false;
+          steps.push({
+            col: i, row: j, prefix, isValidCol: false, isDone: true,
+            activeLines: [8, 9], activeStep: 3,
+            desc: `Mismatch found at string ${j} ("${strs[j]}"). The common prefix ends here.`,
+            logic: `<strong style="color:var(--pink)">Mismatch!</strong><br/>Prefix ends at "${prefix}".`, logicClass: 'error'
+          });
+          isDone = true;
+          break;
+        }
+      }
+
+      if (isValidCol) {
+        prefix += char;
+        steps.push({
+          col: i, row: strs.length - 1, prefix, isValidCol: true, isDone: false,
+          activeLines: [11, 12], activeStep: 4,
+          desc: `Column ${i} matches across all strings! Add '${char}' to the prefix.`,
+          logic: `All strings share <strong style="color:var(--sky)">'${char}'</strong>.<br/>prefix = "${prefix}"`, logicClass: 'success'
+        });
       }
     }
 
-    if (isValidCol) {
-      prefix += char;
-      timeline.push({
-        col: i, row: STRS.length - 1, prefix, isValidCol: true, isDone: false,
-        activeLines: [11, 12], activeStep: 4,
-        desc: `Column ${i} matches across all strings! Add '${char}' to the prefix.`,
-        logic: `All strings share <strong style="color:var(--sky)">'${char}'</strong>.<br/>prefix = "${prefix}"`, logicClass: 'success'
+    if (!isDone) {
+      steps.push({
+        col: firstStr.length, row: -1, prefix, isValidCol: true, isDone: true,
+        activeLines: [14], activeStep: 5,
+        desc: `Reached the end of the first string. The longest common prefix is "${prefix}".`,
+        logic: `<strong style="color:var(--green)">Done!</strong> Return "${prefix}".`, logicClass: 'success'
       });
+    }
+    
+    // ensure last step has finalRes
+    if (steps.length > 0) {
+      steps[steps.length - 1].finalRes = `"${prefix}"`;
     }
   }
 
-  if (!isDone) {
-    timeline.push({
-      col: firstStr.length, row: -1, prefix, isValidCol: true, isDone: true,
-      activeLines: [14], activeStep: 5,
-      desc: `Reached the end of the first string. The longest common prefix is "${prefix}".`,
-      logic: `<strong style="color:var(--green)">Done!</strong> Return "${prefix}".`, logicClass: 'success'
-    });
-  }
-
-  return timeline;
-};
-
-const TIMELINE = generateTimeline();
-
-export default function LongestCommonPrefix({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(steps.length);
+  const current = steps[step];
   
-  if (activeTab === 'practice') {
-    return (
-      <VisualizerLayout>
-        <VPHeader title="Longest Common Prefix" lcNum="14" difficulty="Easy" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-        <PracticeWorkspace 
-          problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
-          constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
-        />
-      </VisualizerLayout>
-    );
-  }
-
   return (
     <VisualizerLayout>
       <VPHeader title="Longest Common Prefix" lcNum="14" difficulty="Easy" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
-      </div>
+      {activeTab === 'visualizer' ? (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('strs = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].strs || JSON.parse(pr);
+                setStrs(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={steps.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<AlignLeft size={20} />} title="Vertical Scanning"
               lines={["Imagine the strings stacked vertically.", "Scan column by column (index by index) from left to right.", "If all characters in a column match, append it to the prefix. If one doesn't match or a string ends, stop!"]}
@@ -161,7 +221,7 @@ export default function LongestCommonPrefix({ onBack }: { onBack?: () => void })
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start', margin: '0 auto', maxWidth: 'fit-content' }}>
-                  {STRS.map((str, rowIdx) => (
+                  {strs.map((str: string, rowIdx: number) => (
                     <div key={rowIdx} style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                       <div style={{ width: '20px', fontSize: '0.8rem', color: 'var(--muted)', textAlign: 'right', paddingRight: '8px' }}>
                         {rowIdx}
@@ -178,7 +238,7 @@ export default function LongestCommonPrefix({ onBack }: { onBack?: () => void })
                             className={`array-block ${isScanRow || isPastCol ? 'highlight' : ''}`}
                             style={{
                               width: '36px', height: '36px',
-                              background: isMismatch ? 'rgba(255, 107, 107, 0.2)' : isScanRow ? 'var(--surface2)' : isPastCol ? 'rgba(78, 205, 196, 0.15)' : 'var(--surface)',
+                              background: isMismatch ? 'var(--viz-red-bg)' : isScanRow ? 'var(--surface2)' : isPastCol ? 'rgba(78, 205, 196, 0.15)' : 'var(--surface)',
                               borderColor: isMismatch ? 'var(--pink)' : isScanRow ? 'var(--sky)' : isPastCol ? 'var(--sky)' : 'var(--border)',
                               color: isMismatch ? 'var(--pink)' : 'var(--text)',
                               fontWeight: isScanRow || isPastCol ? 'bold' : 'normal'
@@ -193,7 +253,7 @@ export default function LongestCommonPrefix({ onBack }: { onBack?: () => void })
                   
                   {/* Sweep Line Pointer */}
                   <div style={{ display: 'flex', gap: '4px', marginLeft: '28px', marginTop: '4px' }}>
-                    {STRS[0].split('').map((_, colIdx) => (
+                    {strs.length > 0 && strs[0].split('').map((_: any, colIdx: number) => (
                       <div key={`ptr-${colIdx}`} style={{ width: '36px', textAlign: 'center' }}>
                         {current.col === colIdx && !current.isDone && (
                           <span className="pointer pointer-up" style={{ fontSize: '0.7rem', color: 'var(--sky)' }}>↑</span>
@@ -227,7 +287,7 @@ export default function LongestCommonPrefix({ onBack }: { onBack?: () => void })
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Vertical Scanning"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === steps.length - 1 ? "Done!" : "Vertical Scanning"} desc={current.desc} step={step} maxSteps={steps.length} isDone={step === steps.length - 1} />
           </div>
         }
         right={
@@ -286,6 +346,38 @@ export default function LongestCommonPrefix({ onBack }: { onBack?: () => void })
           </div>
         }
       />
+      </>
+      ) : (
+        <PracticeWorkspace 
+          problemStatement={PROBLEM_STATEMENT}
+          examples={examples}
+          constraints={CONSTRAINTS}
+          defaultCodeJava={`import java.util.*;\n\nclass Main {\n    public static String longestCommonPrefix(String[] strs) {\n        // Write your solution here\n        return "";\n    }\n\n    public static void main(String[] args) {\n        String[] strs = {"flower","flow","flight"};\n        System.out.println("Output: " + longestCommonPrefix(strs));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def longestCommonPrefix(self, strs: list[str]) -> str:\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    strs = ["flower","flow","flight"]\n    print(f"Output: {Solution().longestCommonPrefix(strs)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('strs = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].strs || JSON.parse(pr);
+                setStrs(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
+        />
+      )}
     </VisualizerLayout>
   );
 }

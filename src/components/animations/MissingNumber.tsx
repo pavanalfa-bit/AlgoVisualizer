@@ -147,7 +147,7 @@ export default function MissingNumber({ onBack }: { onBack?: () => void }) {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <div style={{ fontSize: '0.9rem', color: 'var(--muted)', fontWeight: 'bold' }}>Expected Sum (0 to {N})</div>
                     <div style={{ 
-                      width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(78,205,196,0.1)', border: '4px solid var(--sky)',
+                      width: '100px', height: '100px', borderRadius: '50%', background: 'var(--viz-sky-bg)', border: '4px solid var(--sky)',
                       display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2rem', fontWeight: 'bold', color: 'var(--text)'
                     }}>
                       {EXPECTED_SUM}
@@ -162,7 +162,7 @@ export default function MissingNumber({ onBack }: { onBack?: () => void }) {
                     <motion.div 
                       layout
                       style={{ 
-                        width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,107,107,0.1)', border: '4px solid var(--pink)',
+                        width: '100px', height: '100px', borderRadius: '50%', background: 'var(--viz-red-bg)', border: '4px solid var(--pink)',
                         display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2rem', fontWeight: 'bold', color: 'var(--text)'
                       }}
                     >
@@ -176,7 +176,7 @@ export default function MissingNumber({ onBack }: { onBack?: () => void }) {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <div style={{ fontSize: '0.9rem', color: 'var(--muted)', fontWeight: 'bold' }}>Missing</div>
                     <div style={{ 
-                      width: '100px', height: '100px', borderRadius: '12px', background: current.phase === 'done' ? 'rgba(34,197,94,0.2)' : 'var(--surface)', border: `4px dashed ${current.phase === 'done' ? 'var(--green)' : 'var(--border-strong)'}`,
+                      width: '100px', height: '100px', borderRadius: '12px', background: current.phase === 'done' ? 'var(--viz-green-bg)' : 'var(--surface)', border: `4px dashed ${current.phase === 'done' ? 'var(--green)' : 'var(--border-strong)'}`,
                       display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2rem', fontWeight: 'bold', color: 'var(--text)'
                     }}>
                       {current.phase === 'done' ? current.returned : '?'}
@@ -195,7 +195,7 @@ export default function MissingNumber({ onBack }: { onBack?: () => void }) {
                     let opacity = 1;
 
                     if (isActive) {
-                      bg = 'rgba(78, 205, 196, 0.2)';
+                      bg = 'var(--viz-sky-bg)';
                       border = 'var(--sky)';
                     } else if (isProcessed) {
                       bg = 'var(--surface2)';

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -14,24 +14,15 @@ const PROBLEM_STATEMENT = (
 );
 
 const EXAMPLES = [
-  { 
-    label: 'Example 1', 
-    input: 's = "aba"', 
-    output: 'true',
-    explanation: <>It's already a palindrome, no deletions needed.</>
-  },
-  { 
-    label: 'Example 2', 
-    input: 's = "abca"', 
-    output: 'true',
-    explanation: <>You could delete the character 'c' to make it "aba".</>
-  },
-  { 
-    label: 'Example 3', 
-    input: 's = "abc"', 
-    output: 'false',
-    explanation: <>Deleting any one character does not make it a palindrome.</>
-  }
+  { label: 's = "aba"', input: 's = "aba"', s: "aba", output: 'true', explanation: <>It's already a palindrome, no deletions needed.</> },
+  { label: 's = "abca"', input: 's = "abca"', s: "abca", output: 'true', explanation: <>You could delete the character 'c' to make it "aba".</> },
+  { label: 's = "abc"', input: 's = "abc"', s: "abc", output: 'false', explanation: <>Deleting any one character does not make it a palindrome.</> }
+];
+
+const EDGE_CASES = [
+  's = "tebbem"',
+  's = "eeccccbebaeeabebccceea"',
+  's = "atbbga"'
 ];
 
 const CONSTRAINTS = (
@@ -64,11 +55,82 @@ const isPal = (s: string, i: number, j: number) => {
   return true;
 };
 
-const generateTimeline = () => {
-  const timeline: any[] = [];
-  const chars = STR_INPUT.split('');
+export default function ValidPalindromeII({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [strInput, setStrInput] = useState(EXAMPLES[0].s);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('✨ ')) clean = val.substring(3);
+      
+      const parsedS = JSON.parse(clean.replace('s = ', '').trim());
+      
+      if (typeof parsedS !== 'string') {
+        throw new Error();
+      }
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}s = "${parsedS}"`;
+      
+      const isPal = (s: string, i: number, j: number) => {
+        while (i < j) {
+          if (s[i] !== s[j]) return false;
+          i++;
+          j--;
+        }
+        return true;
+      };
+
+      let l = 0;
+      let r = parsedS.length - 1;
+      let res = true;
+      while (l < r) {
+        if (parsedS[l] !== parsedS[r]) {
+          res = isPal(parsedS, l + 1, r) || isPal(parsedS, l, r - 1);
+          break;
+        }
+        l++;
+        r--;
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        s: parsedS,
+        output: res ? 'true' : 'false',
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setStrInput(parsedS);
+      reset();
+    } catch (e) {
+      alert('Invalid format! Please use: s = "aba"');
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    const parsedS = clean.replace('s = ', '').trim();
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        String s = ${parsedS};\n        boolean res = validPalindrome(s);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    s = ${parsedS}\n    res = Solution().validPalindrome(s)\n    print(res)`);
+    }
+  };
+
+  const steps: any[] = [];
+  const chars = strInput.split('');
   
-  timeline.push({
+  steps.push({
     l: 0, r: chars.length - 1, mode: 'normal', skipType: null, status: 'running', checkL: -1, checkR: -1, checkStatus: 'pending',
     activeLines: [15, 16], activeStep: 1,
     desc: "Initialize a left pointer at the start and a right pointer at the end.",
@@ -80,14 +142,14 @@ const generateTimeline = () => {
   let foundMismatch = false;
 
   while (l < r) {
-    timeline.push({
+    steps.push({
       l, r, mode: 'normal', skipType: null, status: 'running', checkL: -1, checkR: -1, checkStatus: 'pending',
       activeLines: [17], activeStep: 2,
       desc: `Check if L (${l}) < R (${r}). True, so we continue checking.`,
       logic: `L < R is <strong style="color:var(--sky)">true</strong>.`, logicClass: 'info'
     });
 
-    timeline.push({
+    steps.push({
       l, r, mode: 'normal', skipType: null, status: 'running', checkL: -1, checkR: -1, checkStatus: 'pending',
       activeLines: [18], activeStep: 3,
       desc: `Compare character at L ('${chars[l]}') with character at R ('${chars[r]}').`,
@@ -96,7 +158,7 @@ const generateTimeline = () => {
 
     if (chars[l] !== chars[r]) {
       foundMismatch = true;
-      timeline.push({
+      steps.push({
         l, r, mode: 'mismatch', skipType: null, status: 'running', checkL: -1, checkR: -1, checkStatus: 'pending',
         activeLines: [19], activeStep: 4,
         desc: `Mismatch found! '${chars[l]}' != '${chars[r]}'. We can use our 1 allowed deletion here.`,
@@ -104,8 +166,8 @@ const generateTimeline = () => {
       });
 
       // Try skipping Left
-      const skipLValid = isPal(STR_INPUT, l + 1, r);
-      timeline.push({
+      const skipLValid = isPal(strInput, l + 1, r);
+      steps.push({
         l, r, mode: 'checking_skip', skipType: 'left', status: 'running', checkL: l + 1, checkR: r, checkStatus: skipLValid ? 'true' : 'false',
         activeLines: [20], activeStep: 5,
         desc: `Option 1: Delete the character at L ('${chars[l]}'). Check if the remaining substring from L+1 to R is a valid palindrome.`,
@@ -113,8 +175,8 @@ const generateTimeline = () => {
       });
 
       // Try skipping Right
-      const skipRValid = isPal(STR_INPUT, l, r - 1);
-      timeline.push({
+      const skipRValid = isPal(strInput, l, r - 1);
+      steps.push({
         l, r, mode: 'checking_skip', skipType: 'right', status: 'running', checkL: l, checkR: r - 1, checkStatus: skipRValid ? 'true' : 'false',
         activeLines: [20], activeStep: 6,
         desc: `Option 2: Delete the character at R ('${chars[r]}'). Check if the remaining substring from L to R-1 is a valid palindrome.`,
@@ -122,23 +184,25 @@ const generateTimeline = () => {
       });
 
       if (skipLValid || skipRValid) {
-        timeline.push({
+        steps.push({
           l, r, mode: 'checking_skip', skipType: skipLValid ? 'left' : 'right', status: 'true', checkL: -1, checkR: -1, checkStatus: 'pending',
           activeLines: [20], activeStep: 7,
           desc: `Since one of the options was valid, we return true! We successfully made it a palindrome with 1 deletion.`,
-          logic: `<strong style="color:var(--green)">Success!</strong> 1 deletion worked.`, logicClass: 'success'
+          logic: `<strong style="color:var(--green)">Success!</strong> 1 deletion worked.`, logicClass: 'success',
+          finalRes: 'true'
         });
       } else {
-        timeline.push({
+        steps.push({
           l, r, mode: 'checking_skip', skipType: 'none', status: 'false', checkL: -1, checkR: -1, checkStatus: 'pending',
           activeLines: [20], activeStep: 7,
           desc: `Neither option worked. Even with 1 deletion, it's not a palindrome. Return false.`,
-          logic: `<strong style="color:var(--pink)">Failed!</strong> >1 deletions needed.`, logicClass: 'error'
+          logic: `<strong style="color:var(--pink)">Failed!</strong> >1 deletions needed.`, logicClass: 'error',
+          finalRes: 'false'
         });
       }
       break; // End after mismatch fork
     } else {
-      timeline.push({
+      steps.push({
         l, r, mode: 'normal', skipType: null, status: 'running', checkL: -1, checkR: -1, checkStatus: 'pending',
         activeLines: [22, 23], activeStep: 8,
         desc: `Characters match! Move both pointers inwards.`,
@@ -150,51 +214,49 @@ const generateTimeline = () => {
   }
 
   if (!foundMismatch) {
-    timeline.push({
+    steps.push({
       l, r, mode: 'normal', skipType: null, status: 'true', checkL: -1, checkR: -1, checkStatus: 'pending',
       activeLines: [25], activeStep: 9,
       desc: `L >= R. We successfully checked all characters with 0 deletions! Return true.`,
-      logic: `<strong style="color:var(--green)">Done!</strong> It's a perfect palindrome.`, logicClass: 'success'
+      logic: `<strong style="color:var(--green)">Done!</strong> It's a perfect palindrome.`, logicClass: 'success',
+      finalRes: 'true'
     });
   }
 
-  return timeline;
-};
-
-const TIMELINE = generateTimeline();
-
-export default function ValidPalindromeII({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(steps.length);
+  const current = steps[step];
   
-  if (activeTab === 'practice') {
-    return (
-      <VisualizerLayout>
-        <VPHeader title="Valid Palindrome II" lcNum="680" difficulty="Easy" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-        <PracticeWorkspace 
-          problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
-          constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
-        />
-      </VisualizerLayout>
-    );
-  }
-
   return (
     <VisualizerLayout>
       <VPHeader title="Valid Palindrome II" lcNum="680" difficulty="Easy" tag="Strings" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
-      </div>
+      {activeTab === 'visualizer' ? (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parsedS = examples[idx].s || JSON.parse(clean.replace('s = ', '').trim());
+                setStrInput(parsedS); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={steps.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Split size={20} />} title="Two Pointers + One Fork"
               lines={["Move L and R inwards as long as characters match.", "When a mismatch occurs, we have 1 'get out of jail free' card. We can either delete L (check L+1 to R) or delete R (check L to R-1).", "If either resulting substring is a perfect palindrome, return true!"]}
@@ -207,7 +269,7 @@ export default function ValidPalindromeII({ onBack }: { onBack?: () => void }) {
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', flexWrap: 'wrap' }}>
-                  {STR_INPUT.split('').map((char: string, i: number) => {
+                  {strInput.split('').map((char: string, i: number) => {
                     const isL = current.l === i;
                     const isR = current.r === i;
                     const isProcessed = (i < current.l || i > current.r);
@@ -224,20 +286,20 @@ export default function ValidPalindromeII({ onBack }: { onBack?: () => void }) {
                       bg = 'var(--surface2)';
                       border = 'var(--border-strong)';
                     } else if (isMismatch) {
-                      bg = 'rgba(255, 107, 107, 0.2)';
+                      bg = 'var(--viz-red-bg)';
                       border = 'var(--pink)';
                     } else if (isSkipped) {
-                      bg = 'rgba(255, 107, 107, 0.5)';
+                      bg = 'var(--viz-red-bd)';
                       border = 'var(--pink)';
                       op = 0.3; // faded out
                     } else if (isCheckSub) {
-                      bg = current.checkStatus === 'true' ? 'rgba(34, 197, 94, 0.2)' : current.checkStatus === 'false' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(78, 205, 196, 0.1)';
+                      bg = current.checkStatus === 'true' ? 'var(--viz-green-bg)' : current.checkStatus === 'false' ? 'var(--viz-red-bg)' : 'var(--viz-sky-bg)';
                       border = current.checkStatus === 'true' ? 'var(--easy)' : current.checkStatus === 'false' ? 'var(--pink)' : 'var(--sky)';
                     } else if (isL && current.mode === 'normal') {
-                      bg = 'rgba(78, 205, 196, 0.2)';
+                      bg = 'var(--viz-sky-bg)';
                       border = 'var(--sky)';
                     } else if (isR && current.mode === 'normal') {
-                      bg = 'rgba(78, 205, 196, 0.2)';
+                      bg = 'var(--viz-sky-bg)';
                       border = 'var(--sky)';
                     }
                     
@@ -280,7 +342,7 @@ export default function ValidPalindromeII({ onBack }: { onBack?: () => void }) {
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Checking with 1 Deletion"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === steps.length - 1 ? "Done!" : "Checking with 1 Deletion"} desc={current.desc} step={step} maxSteps={steps.length} isDone={step === steps.length - 1} />
           </div>
         }
         right={
@@ -360,6 +422,38 @@ export default function ValidPalindromeII({ onBack }: { onBack?: () => void }) {
           </div>
         }
       />
+      </>
+      ) : (
+        <PracticeWorkspace 
+          problemStatement={PROBLEM_STATEMENT}
+          examples={examples}
+          constraints={CONSTRAINTS}
+          defaultCodeJava={`class Main {\n    private static boolean isPalindrome(String s, int i, int j) {\n        while (i < j) {\n            if (s.charAt(i) != s.charAt(j)) return false;\n            i++; j--;\n        }\n        return true;\n    }\n\n    public static boolean validPalindrome(String s) {\n        // Write your solution here\n        return false;\n    }\n\n    public static void main(String[] args) {\n        String s = "abca";\n        System.out.println("Output: " + validPalindrome(s));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def validPalindrome(self, s: str) -> bool:\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    s = "abca"\n    print(f"Output: {Solution().validPalindrome(s)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parsedS = examples[idx].s || JSON.parse(clean.replace('s = ', '').trim());
+                setStrInput(parsedS); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
+        />
+      )}
     </VisualizerLayout>
   );
 }

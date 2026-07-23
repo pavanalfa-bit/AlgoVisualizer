@@ -10,9 +10,15 @@ import {
 } from './VisualizerLayout';
 
 const EXAMPLES: any[] = [
-  { label: '[2,5,1,3,4,7]', nums: [2,5,1,3,4,7], output: '[2,3,5,4,1,7]' },
-  { label: '[1,2,3,4,4,3,2,1]', nums: [1,2,3,4,4,3,2,1], output: '[1,4,2,3,3,2,4,1]' },
-  { label: '[1,1,2,2]', nums: [1,1,2,2], output: '[1,2,1,2]' },
+  { label: 'nums = [2,5,1,3,4,7]', input: 'nums = [2,5,1,3,4,7]', nums: [2,5,1,3,4,7], output: '[2,3,5,4,1,7]', explanation: <></> },
+  { label: 'nums = [1,2,3,4,4,3,2,1]', input: 'nums = [1,2,3,4,4,3,2,1]', nums: [1,2,3,4,4,3,2,1], output: '[1,4,2,3,3,2,4,1]', explanation: <></> },
+  { label: 'nums = [1,1,2,2]', input: 'nums = [1,1,2,2]', nums: [1,1,2,2], output: '[1,2,1,2]', explanation: <></> },
+];
+
+const EDGE_CASES = [
+  "nums = [1000, 1000, 1000, 1000]",
+  "nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]",
+  "nums = [-1, -2, -3, -4]"
 ];
 
 const CODE_JAVA = [
@@ -36,9 +42,57 @@ const CODE_PY = [
 ];
 
 export function ShuffleArray({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(EXAMPLES[0].nums);
   const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length % 2 !== 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      const n = parsed.length / 2;
+      const res = new Array(2 * n);
+      for (let i = 0; i < n; i++) {
+        res[2*i] = parsed[i];
+        res[2*i+1] = parsed[i+n];
+      }
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        nums: parsed,
+        output: `[${res.join(',')}]`,
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [1,2,3,4] (Must be even length)");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        int n = nums.length / 2;\n        int[] res = shuffle(nums, n);\n        System.out.println(java.util.Arrays.toString(res));\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    nums = ${clean}\n    n = len(nums) // 2\n    res = Solution().shuffle(nums, n)\n    print(res)`);
+    }
+  };
 
   const n = nums.length / 2;
   const ansSize = 2 * n;
@@ -118,8 +172,25 @@ export function ShuffleArray({ onBack }: { onBack?: () => void }) {
       
       {tab === 'visualizer' ? (
         <>
-          <ProblemStatement {...problemProps} />
-          <ExamplePicker examples={EXAMPLES} activeEx={activeEx} onSelect={idx => { setActiveEx(idx); setNums(EXAMPLES[idx].nums); reset(); }} />
+          <ProblemStatement {...problemProps} examples={examples} />
+          <ExamplePicker 
+            examples={examples} 
+            activeEx={activeEx} 
+            onSelect={idx => { 
+              setActiveEx(idx); 
+              let pr = examples[idx].input;
+              if (pr.startsWith('✨ ')) pr = pr.substring(3);
+              if (pr.startsWith('nums = ')) pr = pr.substring(7);
+              const inputArr = examples[idx].nums || JSON.parse(pr);
+              setNums(inputArr); 
+              reset(); 
+            }} 
+            onCustomInput={handleCustomInput}
+            onGenerateEdgeCase={async () => {
+              await new Promise(r => setTimeout(r, 1000));
+              return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+            }}
+          />
 
           <VPBody 
             left={
@@ -146,7 +217,7 @@ export function ShuffleArray({ onBack }: { onBack?: () => void }) {
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               border: '2px solid', borderRadius: '8px',
                               fontWeight: 'bold', fontSize: '1rem',
-                              background: isCurrX ? 'rgba(78, 205, 196, 0.2)' : isCurrY ? 'rgba(251, 191, 36, 0.2)' : 'var(--surface)',
+                              background: isCurrX ? 'var(--viz-sky-bg)' : isCurrY ? 'var(--viz-yellow-bg)' : 'var(--surface)',
                               borderColor: isCurrX ? 'var(--cyan)' : isCurrY ? 'var(--orange)' : 'var(--border)',
                               color: isCurrX ? 'var(--cyan)' : isCurrY ? 'var(--orange)' : 'var(--text)'
                             }}
@@ -177,7 +248,7 @@ export function ShuffleArray({ onBack }: { onBack?: () => void }) {
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               border: '2px solid', borderRadius: '8px',
                               fontWeight: 'bold', fontSize: '1rem',
-                              background: isNewlyPlacedX ? 'rgba(78, 205, 196, 0.2)' : isNewlyPlacedY ? 'rgba(251, 191, 36, 0.2)' : (isFilled ? 'var(--surface2)' : 'var(--bg)'),
+                              background: isNewlyPlacedX ? 'var(--viz-sky-bg)' : isNewlyPlacedY ? 'var(--viz-yellow-bg)' : (isFilled ? 'var(--surface2)' : 'var(--bg)'),
                               borderColor: isNewlyPlacedX ? 'var(--cyan)' : isNewlyPlacedY ? 'var(--orange)' : (isFilled ? 'var(--border)' : 'var(--border)'),
                               color: isNewlyPlacedX ? 'var(--cyan)' : isNewlyPlacedY ? 'var(--orange)' : (isFilled ? 'var(--text)' : 'var(--muted)')
                             }}
@@ -228,30 +299,32 @@ export function ShuffleArray({ onBack }: { onBack?: () => void }) {
       ) : (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
-          examples={problemProps.examples}
+          examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`import java.util.Arrays;
-
-class Main {
-    public static int[] shuffle(int[] nums, int n) {
-        // Write your solution here
-        return new int[]{};
-    }
-
-    public static void main(String[] args) {
-        int[] nums = {2,5,1,3,4,7};
-        int n = 3;
-        System.out.println("Output: " + Arrays.toString(shuffle(nums, n)));
-    }
-}`}
-          defaultCodePython={`def shuffle(nums, n):
-    # Write your solution here
-    pass
-
-if __name__ == "__main__":
-    nums = [2,5,1,3,4,7]
-    n = 3
-    print(f"Output: {shuffle(nums, n)}")`}
+          defaultCodeJava={`import java.util.Arrays;\n\nclass Main {\n    public static int[] shuffle(int[] nums, int n) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {2,5,1,3,4,7};\n        int n = 3;\n        System.out.println("Output: " + Arrays.toString(shuffle(nums, n)));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def shuffle(self, nums, n):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [2,5,1,3,4,7]\n    n = 3\n    print(f"Output: {Solution().shuffle(nums, n)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('nums = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].nums || JSON.parse(pr);
+                setNums(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       )}
     </VisualizerLayout>

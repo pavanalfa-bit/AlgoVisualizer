@@ -29,11 +29,11 @@ export function GenericMatrixCanvas({ matrix, boundaries }: GenericMatrixCanvasP
 
   const getStatusColors = (status: string) => {
     switch(status) {
-      case 'current': return { bg: '#0e3d55', border: 'var(--cyan)', text: 'var(--cyan)' };
-      case 'visited': return { bg: 'var(--grn-bg)', border: 'var(--green)', text: 'var(--green)' };
-      case 'highlight': return { bg: 'rgba(251, 191, 36, 0.2)', border: 'var(--medium)', text: 'var(--medium)' };
-      case 'neighbor': return { bg: 'rgba(168, 85, 247, 0.1)', border: 'var(--purple)', text: 'var(--text)' };
-      case 'error': return { bg: 'var(--hard-bg)', border: 'var(--hard)', text: 'var(--hard)' };
+      case 'current': return { bg: 'var(--viz-sky-bg)', border: 'var(--viz-sky-bd)', text: 'var(--viz-sky-fg)' };
+      case 'visited': return { bg: 'var(--viz-green-bg)', border: 'var(--viz-green-bd)', text: 'var(--viz-green-fg)' };
+      case 'highlight': return { bg: 'var(--viz-yellow-bg)', border: 'var(--viz-yellow-bd)', text: 'var(--viz-yellow-fg)' };
+      case 'neighbor': return { bg: 'var(--viz-purple-bg)', border: 'var(--viz-purple-bd)', text: 'var(--viz-purple-fg)' };
+      case 'error': return { bg: 'var(--viz-red-bg)', border: 'var(--viz-red-bd)', text: 'var(--viz-red-fg)' };
       default: return { bg: 'var(--surface)', border: 'var(--border)', text: 'var(--text)' };
     }
   };

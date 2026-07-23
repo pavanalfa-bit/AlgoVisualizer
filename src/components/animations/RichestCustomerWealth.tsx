@@ -9,10 +9,16 @@ import {
   PracticeWorkspace
 } from './VisualizerLayout';
 
-const INITIAL_EXAMPLES = [
-  { label: '[ [ 1, 2, 3 ], [ 3, 2, 1 ] ]', grid: [[1,2,3],[3,2,1]], output: '6' },
-  { label: '[ [ 1, 5 ], [ 7, 3 ], [ 3, 5 ] ]', grid: [[1,5],[7,3],[3,5]], output: '10' },
-  { label: '[ [ 2, 8, 7 ], [ 7, 1, 3 ] ]', grid: [[2,8,7],[7,1,3]], output: '17' },
+const EXAMPLES: any[] = [
+  { label: 'accounts = [[1,2,3],[3,2,1]]', input: 'accounts = [[1,2,3],[3,2,1]]', accounts: [[1,2,3],[3,2,1]], output: '6', explanation: <></> },
+  { label: 'accounts = [[1,5],[7,3],[3,5]]', input: 'accounts = [[1,5],[7,3],[3,5]]', accounts: [[1,5],[7,3],[3,5]], output: '10', explanation: <></> },
+  { label: 'accounts = [[2,8,7],[7,1,3],[1,9,5]]', input: 'accounts = [[2,8,7],[7,1,3],[1,9,5]]', accounts: [[2,8,7],[7,1,3],[1,9,5]], output: '17', explanation: <></> }
+];
+
+const EDGE_CASES = [
+  "accounts = [[100, 100], [0, 0]]",
+  "accounts = [[1,1,1,1],[1,1,1,1]]",
+  "accounts = [[9999]]"
 ];
 
 const CODE_JAVA = [
@@ -39,10 +45,58 @@ const CODE_PY = [
 ];
 
 export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
-  const [examples, setExamples] = useState(INITIAL_EXAMPLES);
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
-  const [grid, setGrid] = useState(examples[0].grid);
+  const [accounts, setAccounts] = useState(EXAMPLES[0].accounts);
   const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('accounts = ')) clean = val.substring(11);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0 || !Array.isArray(parsed[0])) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}accounts = ${JSON.stringify(parsed)}`;
+      let maxWealth = 0;
+      for (const row of parsed) {
+        let sum = 0;
+        for (const num of row) sum += num;
+        maxWealth = Math.max(maxWealth, sum);
+      }
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        accounts: parsed,
+        output: maxWealth.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setAccounts(parsed);
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: accounts = [[1,2],[3,4]]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('accounts = ')) clean = clean.substring(11);
+    
+    if (lang === 'java') {
+      let javaArr = clean.replace(/\[/g, '{').replace(/\]/g, '}');
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[][] accounts = new int[][]{${javaArr}};\n        int res = maximumWealth(accounts);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    accounts = ${clean}\n    res = Solution().maximumWealth(accounts)\n    print(res)`);
+    }
+  };
 
   // Pre-compute steps
   const steps: any[] = [];
@@ -58,7 +112,7 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
   });
 
   let maxWealth = 0;
-  for (let i = 0; i < grid.length; i++) {
+  for (let i = 0; i < accounts.length; i++) {
     let customerWealth = 0;
     
     steps.push({
@@ -71,15 +125,15 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
       logicClass: ''
     });
 
-    for (let j = 0; j < grid[i].length; j++) {
-      customerWealth += grid[i][j];
+    for (let j = 0; j < accounts[i].length; j++) {
+      customerWealth += accounts[i][j];
       steps.push({
         title: `Customer ${i} - Bank ${j}`,
-        desc: `Add bank account [${i}][${j}] = ${grid[i][j]}\ncustomerWealth = ${customerWealth - grid[i][j]} + ${grid[i][j]} = ${customerWealth}`,
+        desc: `Add bank account [${i}][${j}] = ${accounts[i][j]}\ncustomerWealth = ${customerWealth - accounts[i][j]} + ${accounts[i][j]} = ${customerWealth}`,
         codeJava: [5, 6], codePy: [4], algoStep: 2,
         maxWealth, currRow: i, currCol: j, currSum: customerWealth,
         state: { c: i, b: j, w: customerWealth, max: maxWealth },
-        logic: `Add bank <strong>${j}</strong> (<code>${grid[i][j]}</code>) to customer's wealth.<br/>Current wealth = <strong>${customerWealth}</strong>.`
+        logic: `Add bank <strong>${j}</strong> (<code>${accounts[i][j]}</code>) to customer's wealth.<br/>Current wealth = <strong>${customerWealth}</strong>.`
       });
     }
 
@@ -112,45 +166,7 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
 
   const problemProps = {
     statement: <>You are given an <code>m x n</code> integer grid <code>accounts</code> where <code>accounts[i][j]</code> is the amount of money the <code>i<sup>th</sup></code> customer has in the <code>j<sup>th</sup></code> bank. Return the wealth that the richest customer has.</>,
-    examples: [
-      { label: 'Example 1', input: 'accounts = [[1,2,3],[3,2,1]]', output: '6', explanation: 'Both customers have wealth = 6.' },
-      { label: 'Example 2', input: 'accounts = [[1,5],[7,3],[3,5]]', output: '10', explanation: 'Customer 1 has 6, Customer 2 has 10, Customer 3 has 8.' }
-    ],
     constraints: <>m == accounts.length | n == accounts[i].length | 1 ≤ m, n ≤ 50 | 1 ≤ accounts[i][j] ≤ 100</>
-  };
-
-  const handleCustomInput = (val: string) => {
-    try {
-      const parsed = JSON.parse(val);
-      if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
-        let maxOutput = 0;
-        parsed.forEach((row: number[]) => {
-          let sum = row.reduce((a, b) => a + b, 0);
-          maxOutput = Math.max(maxOutput, sum);
-        });
-
-        const formattedLabel = '[ ' + parsed.map((row: any[]) => '[ ' + row.join(', ') + ' ]').join(', ') + ' ]';
-        const newEx = { label: formattedLabel, grid: parsed, output: maxOutput.toString() };
-        const newExamples = [...examples, newEx];
-        setExamples(newExamples);
-        setActiveEx(newExamples.length - 1);
-        setGrid(parsed);
-        reset();
-      } else {
-        alert("Invalid format. Please enter a 2D array like [[1,2],[3,4]]");
-      }
-    } catch (e) {
-      alert("Invalid JSON format. Please enter a 2D array like [[1,2],[3,4]]");
-    }
-  };
-
-  const injectCode = (code: string, lang: string, exampleStr: string) => {
-    if (lang === 'java') {
-      const javaArray = exampleStr.replace(/\[/g, '{').replace(/\]/g, '}');
-      return code.replace(/int\[\]\[\] accounts = .*?;/, `int[][] accounts = ${javaArray};`);
-    } else {
-      return code.replace(/accounts = \[.*\]/, `accounts = ${exampleStr}`);
-    }
   };
 
   return (
@@ -167,12 +183,24 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
       
       {tab === 'visualizer' ? (
         <>
-          <ProblemStatement {...problemProps} />
+          <ProblemStatement {...problemProps} examples={examples} />
           <ExamplePicker 
             examples={examples} 
             activeEx={activeEx} 
-            onSelect={idx => { setActiveEx(idx); setGrid(examples[idx].grid); reset(); }} 
+            onSelect={idx => { 
+              setActiveEx(idx); 
+              let pr = examples[idx].input;
+              if (pr.startsWith('✨ ')) pr = pr.substring(3);
+              if (pr.startsWith('accounts = ')) pr = pr.substring(11);
+              const inputArr = examples[idx].accounts || JSON.parse(pr);
+              setAccounts(inputArr); 
+              reset(); 
+            }} 
             onCustomInput={handleCustomInput}
+            onGenerateEdgeCase={async () => {
+              await new Promise(r => setTimeout(r, 1000));
+              return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+            }}
           />
 
           <VPBody 
@@ -185,7 +213,7 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
                   <div className="card-title">Accounts Matrix</div>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
-                    {grid.map((row: number[], rIdx: number) => {
+                    {accounts.map((row: number[], rIdx: number) => {
                       const isCurrRow = cs.currRow === rIdx;
                       return (
                         <div key={rIdx} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -204,9 +232,9 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     border: '2px solid', borderRadius: '6px',
                                     fontWeight: 'bold', fontSize: '1rem',
-                                    background: isCurrCell ? '#0e3d55' : 'var(--surface)',
-                                    borderColor: isCurrCell ? 'var(--cyan)' : 'var(--border)',
-                                    color: isCurrCell ? 'var(--cyan)' : 'var(--text)'
+                                    background: isCurrCell ? 'var(--viz-sky-bg)' : 'var(--surface)',
+                                    borderColor: isCurrCell ? 'var(--viz-sky-bd)' : 'var(--border)',
+                                    color: isCurrCell ? 'var(--viz-sky-fg)' : 'var(--text)'
                                   }}
                                 >
                                   {val}
@@ -215,7 +243,7 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
                             })}
                           </div>
                           {isCurrRow && (
-                            <div style={{ marginLeft: 'auto', background: 'rgba(251, 191, 36, 0.1)', color: 'var(--medium)', padding: '4px 12px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600 }}>
+                            <div style={{ marginLeft: 'auto', background: 'var(--viz-yellow-bg)', color: 'var(--medium)', padding: '4px 12px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600 }}>
                               Sum: {cs.currSum}
                             </div>
                           )}
@@ -261,32 +289,28 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
       ) : (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
-          examples={problemProps.examples}
+          examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`class Main {
-    public static int maximumWealth(int[][] accounts) {
-        // Write your solution here
-        return 0;
-    }
-
-    public static void main(String[] args) {
-        int[][] accounts = {{1,2,3},{3,2,1}};
-        System.out.println("Max wealth: " + maximumWealth(accounts));
-    }
-}`}
-          defaultCodePython={`def maximumWealth(accounts):
-    # Write your solution here
-    pass
-
-if __name__ == "__main__":
-    accounts = [[1,2,3],[3,2,1]]
-    print(f"Max wealth: {maximumWealth(accounts)}")`}
+          defaultCodeJava={`class Main {\n    public static int maximumWealth(int[][] accounts) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        int[][] accounts = {{1, 2, 3}, {3, 2, 1}};\n        System.out.println("Output: " + maximumWealth(accounts));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def maximumWealth(self, accounts):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    accounts = [[1, 2, 3], [3, 2, 1]]\n    print(f"Output: {Solution().maximumWealth(accounts)}")`}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
               activeEx={activeEx} 
-              onSelect={idx => { setActiveEx(idx); setGrid(examples[idx].grid); reset(); }} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('accounts = ')) pr = pr.substring(11);
+                const inputArr = examples[idx].accounts || JSON.parse(pr);
+                setAccounts(inputArr); 
+                reset(); 
+              }} 
               onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
             />
           }
           activeExampleStr={examples[activeEx].label}

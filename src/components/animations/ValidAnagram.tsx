@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -15,18 +15,14 @@ const PROBLEM_STATEMENT = (
 );
 
 const EXAMPLES = [
-  { 
-    label: 'Example 1', 
-    input: 's = "anagram", t = "nagaram"', 
-    output: 'true',
-    explanation: <>Both strings contain exactly the same letters in the same frequencies.</>
-  },
-  { 
-    label: 'Example 2', 
-    input: 's = "rat", t = "car"', 
-    output: 'false',
-    explanation: <>'rat' has an 'r', 'a', 't'. 'car' has a 'c', 'a', 'r'. They do not match.</>
-  }
+  { label: 's = "anagram", t = "nagaram"', input: 's = "anagram", t = "nagaram"', s: "anagram", t: "nagaram", output: 'true', explanation: <>Both strings contain exactly the same letters in the same frequencies.</> },
+  { label: 's = "rat", t = "car"', input: 's = "rat", t = "car"', s: "rat", t: "car", output: 'false', explanation: <>'rat' has an 'r', 'a', 't'. 'car' has a 'c', 'a', 'r'. They do not match.</> }
+];
+
+const EDGE_CASES = [
+  's = "a", t = "a"',
+  's = "a", t = "b"',
+  's = "hello", t = "ooolle"'
 ];
 
 const CONSTRAINTS = (
@@ -47,104 +43,185 @@ const DEFAULT_PYTHON = `class Solution:\n    def isAnagram(self, s: str, t: str)
 const S = "tea";
 const T = "eat";
 
-const generateTimeline = () => {
-  const timeline: any[] = [];
-  
-  if (S.length !== T.length) {
-    return [{ activeLines: [], activeStep: 1, desc: "Lengths differ. Return false.", logic: "Length mismatch", logicClass: 'error' }];
-  }
+export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [s, setS] = useState(EXAMPLES[0].s);
+  const [tStr, setT] = useState(EXAMPLES[0].t);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
 
-  const count = Array(26).fill(0);
-  
-  timeline.push({
-    curr: -1, scan: -1, count: [...count], valid: true, status: 'running',
-    activeLines: [2, 3], activeStep: 1,
-    desc: "Initialize a frequency array of size 26 (for 'a' to 'z') with all zeros.",
-    logic: `<strong>Init:</strong> Frequency array created.`, logicClass: 'info'
-  });
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('✨ ')) clean = val.substring(3);
+      
+      const parts = clean.split(', t = ');
+      const sPart = parts[0].replace('s = ', '').trim();
+      const tPart = parts[1].trim();
+      
+      const parsedS = JSON.parse(sPart);
+      const parsedT = JSON.parse(tPart);
+      
+      if (typeof parsedS !== 'string' || typeof parsedT !== 'string') {
+        throw new Error();
+      }
 
-  for (let i = 0; i < S.length; i++) {
-    const c1 = S[i];
-    const c2 = T[i];
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}s = "${parsedS}", t = "${parsedT}"`;
+      
+      let isValid = true;
+      if (parsedS.length !== parsedT.length) {
+        isValid = false;
+      } else {
+        const count = Array(26).fill(0);
+        for (let i = 0; i < parsedS.length; i++) {
+          count[parsedS.charCodeAt(i) - 97]++;
+          count[parsedT.charCodeAt(i) - 97]--;
+        }
+        for (let i = 0; i < 26; i++) {
+          if (count[i] !== 0) {
+            isValid = false;
+            break;
+          }
+        }
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        s: parsedS,
+        t: parsedT,
+        output: isValid ? 'true' : 'false',
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setS(parsedS);
+      setT(parsedT);
+      reset();
+    } catch (e) {
+      alert('Invalid format! Please use: s = "anagram", t = "nagaram"');
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    const parts = clean.split(', t = ');
+    const sPart = parts[0].replace('s = ', '').trim();
+    const tPart = parts[1].trim();
     
-    count[c1.charCodeAt(0) - 97]++;
-    count[c2.charCodeAt(0) - 97]--;
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        String s = ${sPart};\n        String t = ${tPart};\n        boolean res = isAnagram(s, t);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    s = ${sPart}\n    t = ${tPart}\n    res = Solution().isAnagram(s, t)\n    print(res)`);
+    }
+  };
+
+  const steps: any[] = [];
+  
+  if (s.length !== tStr.length) {
+    steps.push({ activeLines: [], activeStep: 1, desc: "Lengths differ. Return false.", logic: "Length mismatch", logicClass: 'error', finalRes: 'false' });
+  } else {
+    const count = Array(26).fill(0);
     
-    timeline.push({
-      curr: i, scan: -1, count: [...count], valid: true, status: 'running',
-      activeLines: [5, 6, 7], activeStep: 2,
-      desc: `Add '${c1}' (from s) and subtract '${c2}' (from t) in the frequency array.`,
-      logic: `<strong style="color:var(--sky)">+1</strong> for '${c1}'.<br/><strong style="color:var(--pink)">-1</strong> for '${c2}'.`, logicClass: 'info'
+    steps.push({
+      curr: -1, scan: -1, count: [...count], valid: true, status: 'running',
+      activeLines: [2, 3], activeStep: 1,
+      desc: "Initialize a frequency array of size 26 (for 'a' to 'z') with all zeros.",
+      logic: `<strong>Init:</strong> Frequency array created.`, logicClass: 'info'
     });
-  }
 
-  timeline.push({
-    curr: S.length, scan: -1, count: [...count], valid: true, status: 'running',
-    activeLines: [10], activeStep: 3,
-    desc: "Finished building the frequency array. Now scan it to ensure all counts are 0.",
-    logic: `Start checking frequencies...`, logicClass: 'info'
-  });
-
-  let isValid = true;
-  for (let i = 0; i < 26; i++) {
-    if (count[i] !== 0) {
-      isValid = false;
-      timeline.push({
-        curr: S.length, scan: i, count: [...count], valid: false, status: 'false',
-        activeLines: [11, 12], activeStep: 4,
-        desc: `Found a non-zero count at '${String.fromCharCode(i + 97)}' (${count[i]}). Return false.`,
-        logic: `Count for '${String.fromCharCode(i + 97)}' is <strong style="color:var(--pink)">${count[i]}</strong> (not 0).<br/>Return false.`, logicClass: 'error'
+    for (let i = 0; i < s.length; i++) {
+      const c1 = s[i];
+      const c2 = tStr[i];
+      
+      count[c1.charCodeAt(0) - 97]++;
+      count[c2.charCodeAt(0) - 97]--;
+      
+      steps.push({
+        curr: i, scan: -1, count: [...count], valid: true, status: 'running',
+        activeLines: [5, 6, 7], activeStep: 2,
+        desc: `Add '${c1}' (from s) and subtract '${c2}' (from t) in the frequency array.`,
+        logic: `<strong style="color:var(--sky)">+1</strong> for '${c1}'.<br/><strong style="color:var(--pink)">-1</strong> for '${c2}'.`, logicClass: 'info'
       });
-      break;
+    }
+
+    steps.push({
+      curr: s.length, scan: -1, count: [...count], valid: true, status: 'running',
+      activeLines: [10], activeStep: 3,
+      desc: "Finished building the frequency array. Now scan it to ensure all counts are 0.",
+      logic: `Start checking frequencies...`, logicClass: 'info'
+    });
+
+    let isValid = true;
+    for (let i = 0; i < 26; i++) {
+      if (count[i] !== 0) {
+        isValid = false;
+        steps.push({
+          curr: s.length, scan: i, count: [...count], valid: false, status: 'false',
+          activeLines: [11, 12], activeStep: 4,
+          desc: `Found a non-zero count at '${String.fromCharCode(i + 97)}' (${count[i]}). Return false.`,
+          logic: `Count for '${String.fromCharCode(i + 97)}' is <strong style="color:var(--pink)">${count[i]}</strong> (not 0).<br/>Return false.`, logicClass: 'error',
+          finalRes: 'false'
+        });
+        break;
+      }
+    }
+
+    if (isValid) {
+      steps.push({
+        curr: s.length, scan: 26, count: [...count], valid: true, status: 'true',
+        activeLines: [15], activeStep: 5,
+        desc: "All frequencies are 0. The strings are anagrams!",
+        logic: `<strong style="color:var(--green)">Success!</strong> All counts are 0.<br/>Return true.`, logicClass: 'success',
+        finalRes: 'true'
+      });
     }
   }
 
-  if (isValid) {
-    timeline.push({
-      curr: S.length, scan: 26, count: [...count], valid: true, status: 'true',
-      activeLines: [15], activeStep: 5,
-      desc: "All frequencies are 0. The strings are anagrams!",
-      logic: `<strong style="color:var(--green)">Success!</strong> All counts are 0.<br/>Return true.`, logicClass: 'success'
-    });
-  }
-
-  return timeline;
-};
-
-const TIMELINE = generateTimeline();
-
-export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(steps.length);
+  const current = steps[step];
   
-  if (activeTab === 'practice') {
-    return (
-      <VisualizerLayout>
-        <VPHeader title="Valid Anagram" lcNum="242" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-        <PracticeWorkspace 
-          problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
-          constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
-        />
-      </VisualizerLayout>
-    );
-  }
-
   return (
     <VisualizerLayout>
       <VPHeader title="Valid Anagram" lcNum="242" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
-      </div>
+      {activeTab === 'visualizer' ? (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parts = clean.split(', t = ');
+                const sPart = parts[0].replace('s = ', '').trim();
+                const tPart = parts[1].trim();
+                const inputS = examples[idx].s || JSON.parse(sPart);
+                const inputT = examples[idx].t || JSON.parse(tPart);
+                setS(inputS); 
+                setT(inputT);
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={steps.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<BarChart2 size={20} />} title="Frequency Array"
               lines={["Initialize an integer array of size 26.", "Iterate through both strings. Increment the frequency for chars in `s`, and decrement for chars in `t`.", "Scan the array. If any value is not 0, it's not an anagram."]}
@@ -161,7 +238,7 @@ export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{ fontWeight: 'bold', color: 'var(--sky)', marginBottom: '8px' }}>String s</div>
                   <div className="array-container" style={{ gap: '8px' }}>
-                    {S.split('').map((char, i) => {
+                    {s.split('').map((char: string, i: number) => {
                       const isCurr = current.curr === i;
                       return (
                         <div key={`s-${i}`} className="array-block-wrapper">
@@ -169,7 +246,7 @@ export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
                             className={`array-block ${isCurr ? 'highlight' : ''}`}
                             style={{
                               width: '40px', height: '40px',
-                              background: isCurr ? 'rgba(78, 205, 196, 0.2)' : 'var(--surface)',
+                              background: isCurr ? 'var(--viz-sky-bg)' : 'var(--surface)',
                               borderColor: isCurr ? 'var(--sky)' : 'var(--border)',
                               color: 'var(--text)'
                             }}
@@ -189,7 +266,7 @@ export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{ fontWeight: 'bold', color: 'var(--pink)', marginBottom: '8px' }}>String t</div>
                   <div className="array-container" style={{ gap: '8px' }}>
-                    {T.split('').map((char, i) => {
+                    {tStr.split('').map((char: string, i: number) => {
                       const isCurr = current.curr === i;
                       return (
                         <div key={`t-${i}`} className="array-block-wrapper">
@@ -197,7 +274,7 @@ export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
                             className={`array-block ${isCurr ? 'highlight' : ''}`}
                             style={{
                               width: '40px', height: '40px',
-                              background: isCurr ? 'rgba(255, 107, 107, 0.2)' : 'var(--surface)',
+                              background: isCurr ? 'var(--viz-red-bg)' : 'var(--surface)',
                               borderColor: isCurr ? 'var(--pink)' : 'var(--border)',
                               color: 'var(--text)'
                             }}
@@ -237,7 +314,7 @@ export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
                           animate={{ scale: 1, opacity: 1 }}
                           exit={{ scale: 0, opacity: 0 }}
                           style={{ 
-                            background: isScanTarget ? 'rgba(255, 107, 107, 0.2)' : 'var(--surface2)', 
+                            background: isScanTarget ? 'var(--viz-red-bg)' : 'var(--surface2)', 
                             padding: '4px 12px', borderRadius: '8px', 
                             border: `1px solid ${isScanTarget ? 'var(--pink)' : 'var(--border-strong)'}`,
                             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'
@@ -266,7 +343,7 @@ export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Calculating Frequencies"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === steps.length - 1 ? "Done!" : "Calculating Frequencies"} desc={current.desc} step={step} maxSteps={steps.length} isDone={step === steps.length - 1} />
           </div>
         }
         right={
@@ -329,6 +406,43 @@ export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
           </div>
         }
       />
+      </>
+      ) : (
+        <PracticeWorkspace 
+          problemStatement={PROBLEM_STATEMENT}
+          examples={examples}
+          constraints={CONSTRAINTS}
+          defaultCodeJava={`import java.util.*;\n\nclass Main {\n    public static boolean isAnagram(String s, String t) {\n        // Write your solution here\n        return false;\n    }\n\n    public static void main(String[] args) {\n        String s = "anagram";\n        String t = "nagaram";\n        System.out.println("Output: " + isAnagram(s, t));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def isAnagram(self, s: str, t: str) -> bool:\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    s = "anagram"\n    t = "nagaram"\n    print(f"Output: {Solution().isAnagram(s, t)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parts = clean.split(', t = ');
+                const sPart = parts[0].replace('s = ', '').trim();
+                const tPart = parts[1].trim();
+                const inputS = examples[idx].s || JSON.parse(sPart);
+                const inputT = examples[idx].t || JSON.parse(tPart);
+                setS(inputS); 
+                setT(inputT);
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
+        />
+      )}
     </VisualizerLayout>
   );
 }

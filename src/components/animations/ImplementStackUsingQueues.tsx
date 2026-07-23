@@ -248,7 +248,7 @@ export default function ImplementStackUsingQueues({ onBack }: { onBack?: () => v
                           let bg = 'var(--surface2)';
                           let border = 'var(--border-strong)';
                           if (isNew) {
-                            bg = 'rgba(78, 205, 196, 0.2)';
+                            bg = 'var(--viz-sky-bg)';
                             border = 'var(--sky)';
                           }
                           

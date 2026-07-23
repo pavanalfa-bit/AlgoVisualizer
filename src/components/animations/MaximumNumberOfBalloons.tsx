@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -15,24 +15,15 @@ const PROBLEM_STATEMENT = (
 );
 
 const EXAMPLES = [
-  { 
-    label: 'Example 1', 
-    input: 'text = "nlaebolko"', 
-    output: '1',
-    explanation: <>We can form the word "balloon" exactly once using these characters.</>
-  },
-  { 
-    label: 'Example 2', 
-    input: 'text = "loonbalxballpoon"', 
-    output: '2',
-    explanation: <>We can form the word "balloon" twice.</>
-  },
-  { 
-    label: 'Example 3', 
-    input: 'text = "leetcode"', 
-    output: '0',
-    explanation: <>We cannot form "balloon".</>
-  }
+  { label: 'text = "nlaebolko"', input: 'text = "nlaebolko"', text: "nlaebolko", output: '1', explanation: <>We can form the word "balloon" exactly once using these characters.</> },
+  { label: 'text = "loonbalxballpoon"', input: 'text = "loonbalxballpoon"', text: "loonbalxballpoon", output: '2', explanation: <>We can form the word "balloon" twice.</> },
+  { label: 'text = "leetcode"', input: 'text = "leetcode"', text: "leetcode", output: '0', explanation: <>We cannot form "balloon".</> }
+];
+
+const EDGE_CASES = [
+  'text = "bbaalllloooonn"',
+  'text = "b"',
+  'text = "balloonballoonballoon"'
 ];
 
 const CONSTRAINTS = (
@@ -52,31 +43,94 @@ const DEFAULT_PYTHON = `class Solution:\n    def maxNumberOfBalloons(self, text:
 
 const TEXT = "nlaebolko";
 
-const generateTimeline = () => {
-  const timeline: any[] = [];
+export default function MaximumNumberOfBalloons({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [text, setText] = useState(EXAMPLES[0].text);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('✨ ')) clean = val.substring(3);
+      
+      const parsedText = JSON.parse(clean.replace('text = ', '').trim());
+      
+      if (typeof parsedText !== 'string') {
+        throw new Error();
+      }
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}text = "${parsedText}"`;
+      
+      let b = 0, a = 0, l = 0, o = 0, n = 0;
+      for (let i = 0; i < parsedText.length; i++) {
+        const char = parsedText[i];
+        if (char === 'b') b++;
+        else if (char === 'a') a++;
+        else if (char === 'l') l++;
+        else if (char === 'o') o++;
+        else if (char === 'n') n++;
+      }
+      l = Math.floor(l / 2);
+      o = Math.floor(o / 2);
+      const res = Math.min(b, a, l, o, n);
+
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        text: parsedText,
+        output: res.toString(),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setText(parsedText);
+      reset();
+    } catch (e) {
+      alert('Invalid format! Please use: text = "nlaebolko"');
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    const parsedText = clean.replace('text = ', '').trim();
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        String text = ${parsedText};\n        int res = maxNumberOfBalloons(text);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    text = ${parsedText}\n    res = Solution().maxNumberOfBalloons(text)\n    print(res)`);
+    }
+  };
+
+  const steps: any[] = [];
   const map: Record<string, number> = { b: 0, a: 0, l: 0, o: 0, n: 0 };
   const targetChars = ['b', 'a', 'l', 'o', 'n'];
   
-  timeline.push({
+  steps.push({
     curr: -1, map: { ...map }, res: -1,
     activeLines: [2], activeStep: 1,
     desc: "Initialize a frequency map tracking only the characters we care about: b, a, l, o, n.",
     logic: `<strong>Init:</strong> Tracking counts for {b, a, l, o, n}.`, logicClass: 'info'
   });
 
-  for (let i = 0; i < TEXT.length; i++) {
-    const char = TEXT[i];
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
     
     if (targetChars.includes(char)) {
       map[char]++;
-      timeline.push({
+      steps.push({
         curr: i, map: { ...map }, res: -1,
         activeLines: [3, 4, 5], activeStep: 2,
         desc: `Character '${char}' is needed! Increment its count in our map.`,
         logic: `Found <strong style="color:var(--sky)">'${char}'</strong>!<br/>Count: ${map[char]}`, logicClass: 'success'
       });
     } else {
-      timeline.push({
+      steps.push({
         curr: i, map: { ...map }, res: -1,
         activeLines: [3, 4], activeStep: 2,
         desc: `Character '${char}' is not in the word "balloon". Ignore it.`,
@@ -92,57 +146,55 @@ const generateTimeline = () => {
   const n = map['n'];
   const res = Math.min(b, a, l, o, n);
 
-  timeline.push({
-    curr: TEXT.length, map: { ...map }, res,
+  steps.push({
+    curr: text.length, map: { ...map }, res,
     activeLines: [7, 8], activeStep: 3,
     desc: `Calculate how many times we can form "balloon". Since 'l' and 'o' appear twice in the word, divide their counts by 2. Then find the minimum of all available counts.`,
     logic: `b: ${b}, a: ${a}, l: ${map['l']}/2=${l}, o: ${map['o']}/2=${o}, n: ${n}<br/>Min = <strong style="color:var(--accent)">${res}</strong>`, logicClass: 'warning'
   });
 
-  timeline.push({
-    curr: TEXT.length, map: { ...map }, res,
+  steps.push({
+    curr: text.length, map: { ...map }, res,
     activeLines: [9], activeStep: 4,
     desc: `Return the result: ${res} balloons!`,
-    logic: `<strong style="color:var(--green)">Done!</strong> Can form <strong>${res}</strong> balloon(s).`, logicClass: 'success'
+    logic: `<strong style="color:var(--green)">Done!</strong> Can form <strong>${res}</strong> balloon(s).`, logicClass: 'success',
+    finalRes: res.toString()
   });
 
-  return timeline;
-};
-
-const TIMELINE = generateTimeline();
-
-export default function MaximumNumberOfBalloons({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(steps.length);
+  const current = steps[step];
   
-  if (activeTab === 'practice') {
-    return (
-      <VisualizerLayout>
-        <VPHeader title="Maximum Number of Balloons" lcNum="1189" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-        <PracticeWorkspace 
-          problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
-          constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
-        />
-      </VisualizerLayout>
-    );
-  }
-
   return (
     <VisualizerLayout>
       <VPHeader title="Maximum Number of Balloons" lcNum="1189" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
-      </div>
+      {activeTab === 'visualizer' ? (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parsedText = examples[idx].text || JSON.parse(clean.replace('text = ', '').trim());
+                setText(parsedText); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={steps.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Type size={20} />} title="Frequency Map"
               lines={["Count frequencies of the characters we care about: b, a, l, o, n.", "Since 'l' and 'o' appear twice in 'balloon', divide their final counts by 2.", "The maximum words we can form is the minimum bottleneck count of all these characters!"]}
@@ -155,7 +207,7 @@ export default function MaximumNumberOfBalloons({ onBack }: { onBack?: () => voi
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', gap: '8px', flexWrap: 'wrap' }}>
-                  {TEXT.split('').map((char, i) => {
+                  {text.split('').map((char: string, i: number) => {
                     const isCurr = current.curr === i;
                     const isProcessed = i < current.curr;
                     const isTarget = ['b','a','l','o','n'].includes(char);
@@ -171,8 +223,8 @@ export default function MaximumNumberOfBalloons({ onBack }: { onBack?: () => voi
                           style={{
                             width: '40px',
                             height: '40px',
-                            background: isCurr ? (isTarget ? 'rgba(78, 205, 196, 0.2)' : 'var(--surface2)') : isProcessed ? (isTarget ? 'rgba(78, 205, 196, 0.1)' : 'var(--surface)') : 'var(--surface)',
-                            borderColor: isCurr ? (isTarget ? 'var(--sky)' : 'var(--muted)') : isProcessed ? (isTarget ? 'rgba(78, 205, 196, 0.5)' : 'var(--border)') : 'var(--border)',
+                            background: isCurr ? (isTarget ? 'var(--viz-sky-bg)' : 'var(--surface2)') : isProcessed ? (isTarget ? 'var(--viz-sky-bg)' : 'var(--surface)') : 'var(--surface)',
+                            borderColor: isCurr ? (isTarget ? 'var(--sky)' : 'var(--muted)') : isProcessed ? (isTarget ? 'var(--viz-sky-bd)' : 'var(--border)') : 'var(--border)',
                             color: isTarget ? 'var(--text)' : 'var(--muted)'
                           }}
                         >
@@ -228,7 +280,7 @@ export default function MaximumNumberOfBalloons({ onBack }: { onBack?: () => voi
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Counting"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === steps.length - 1 ? "Done!" : "Counting"} desc={current.desc} step={step} maxSteps={steps.length} isDone={step === steps.length - 1} />
           </div>
         }
         right={
@@ -284,6 +336,38 @@ export default function MaximumNumberOfBalloons({ onBack }: { onBack?: () => voi
           </div>
         }
       />
+      </>
+      ) : (
+        <PracticeWorkspace 
+          problemStatement={PROBLEM_STATEMENT}
+          examples={examples}
+          constraints={CONSTRAINTS}
+          defaultCodeJava={`import java.util.*;\n\nclass Main {\n    public static int maxNumberOfBalloons(String text) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        String text = "nlaebolko";\n        System.out.println("Output: " + maxNumberOfBalloons(text));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def maxNumberOfBalloons(self, text: str) -> int:\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    text = "nlaebolko"\n    print(f"Output: {Solution().maxNumberOfBalloons(text)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parsedText = examples[idx].text || JSON.parse(clean.replace('text = ', '').trim());
+                setText(parsedText); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
+        />
+      )}
     </VisualizerLayout>
   );
 }

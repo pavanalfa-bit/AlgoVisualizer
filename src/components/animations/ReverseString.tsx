@@ -241,7 +241,7 @@ export default function ReverseString({ onBack }: { onBack?: () => void }) {
                           className={`array-block ${isL || isR ? 'highlight' : ''}`}
                           style={{
                             width: '48px', height: '48px',
-                            background: isSwapping ? 'rgba(255, 107, 107, 0.2)' : isL ? 'rgba(78, 205, 196, 0.2)' : isR ? 'rgba(255, 107, 107, 0.15)' : isProcessed ? 'var(--surface2)' : 'var(--surface)',
+                            background: isSwapping ? 'var(--viz-red-bg)' : isL ? 'var(--viz-sky-bg)' : isR ? 'rgba(255, 107, 107, 0.15)' : isProcessed ? 'var(--surface2)' : 'var(--surface)',
                             borderColor: isSwapping ? 'var(--pink)' : isL ? 'var(--sky)' : isR ? 'var(--pink)' : isProcessed ? 'var(--border-strong)' : 'var(--border)',
                             color: 'var(--text)',
                             fontSize: '1.2rem', fontWeight: 'bold'

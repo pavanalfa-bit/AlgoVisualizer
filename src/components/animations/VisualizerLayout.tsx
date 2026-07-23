@@ -33,14 +33,12 @@ export function VPHeader({
 }) {
   return (
     <header className="vp-header">
-      <div>
-        <a className="vp-back" href="#" onClick={(e) => { e.preventDefault(); if (onBack) onBack(); }}>← Back to DSA Animator</a>
-        <div className="vp-title-row">
-          <span className="vp-title">{title}</span>
-          {lcNum && <span className="lc-badge">LC #{lcNum}</span>}
-          <span className={`diff-badge ${difficulty.toLowerCase()}`} style={{ marginTop: 0 }}>{difficulty}</span>
-          <span className="tag-badge">{tag}</span>
-        </div>
+      <div className="vp-title-row">
+        <a className="vp-back" href="#" onClick={(e) => { e.preventDefault(); if (onBack) onBack(); }}>← Back</a>
+        <span className="vp-title">{title}</span>
+        {lcNum && <span className="lc-badge">LC #{lcNum}</span>}
+        <span className={`diff-badge ${difficulty.toLowerCase()}`} style={{ marginTop: 0 }}>{difficulty}</span>
+        <span className="tag-badge">{tag}</span>
       </div>
       {onTabChange && (
         <div style={{ display: 'flex', gap: '8px', marginRight: '16px' }}>
@@ -167,7 +165,7 @@ export function ExamplePicker({
               <button onClick={() => setIsEditing(false)} style={{ background: 'transparent', color: 'var(--muted)', border: 'none', cursor: 'pointer', padding: '4px' }}>✕</button>
             </div>
           ) : (
-            <button className="ex-btn" onClick={() => setIsEditing(true)} style={{ borderStyle: 'dashed', background: 'transparent', color: 'var(--text)' }}>
+            <button className="ex-btn" onClick={() => setIsEditing(true)} style={{ border: '1px dashed var(--muted)', background: 'var(--surface2)', color: 'var(--text)' }}>
               + Custom
             </button>
           )

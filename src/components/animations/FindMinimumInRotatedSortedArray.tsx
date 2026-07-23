@@ -200,13 +200,13 @@ export default function FindMinimumInRotatedSortedArray({ onBack }: { onBack?: (
                       border = 'transparent';
                       opacity = 0.2;
                     } else if (isFound) {
-                      bg = 'rgba(34, 197, 94, 0.6)';
+                      bg = 'var(--viz-green-bd)';
                       border = 'var(--green)';
                     } else if (isComparing && (isMid || isR)) {
-                      bg = 'rgba(255, 193, 7, 0.4)';
+                      bg = 'var(--viz-yellow-bg)';
                       border = 'var(--warning)';
                     } else if (isMid) {
-                      bg = 'rgba(108, 142, 245, 0.4)';
+                      bg = 'var(--viz-blue-bg)';
                       border = 'var(--accent)';
                     }
 

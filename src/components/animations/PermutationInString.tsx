@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   VisualizerLayout, VPHeader, VPBody, ControlBar, ApproachBanner, 
   StateGrid, StepLogic, StepCard, CodePanel, 
-  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement
+  AlgorithmList, Complexity, WhyItWorks, useAnimationController, PracticeWorkspace, ProblemStatement, ExamplePicker
 } from './VisualizerLayout';
 
 const PROBLEM_STATEMENT = (
@@ -15,18 +15,14 @@ const PROBLEM_STATEMENT = (
 );
 
 const EXAMPLES = [
-  { 
-    label: 'Example 1', 
-    input: 's1 = "ab", s2 = "eidbaooo"', 
-    output: 'true',
-    explanation: <>s2 contains one permutation of s1 ("ba").</>
-  },
-  { 
-    label: 'Example 2', 
-    input: 's1 = "ab", s2 = "eidboaoo"', 
-    output: 'false',
-    explanation: <>s2 does not contain any permutation of s1.</>
-  }
+  { label: 's1 = "ab", s2 = "eidbaooo"', input: 's1 = "ab", s2 = "eidbaooo"', s1: "ab", s2: "eidbaooo", output: 'true', explanation: <>s2 contains one permutation of s1 ("ba").</> },
+  { label: 's1 = "ab", s2 = "eidboaoo"', input: 's1 = "ab", s2 = "eidboaoo"', s1: "ab", s2: "eidboaoo", output: 'false', explanation: <>s2 does not contain any permutation of s1.</> }
+];
+
+const EDGE_CASES = [
+  's1 = "a", s2 = "ab"',
+  's1 = "abc", s2 = "cba"',
+  's1 = "hello", s2 = "ooolleoooleh"'
 ];
 
 const CONSTRAINTS = (
@@ -47,134 +43,237 @@ const DEFAULT_PYTHON = `class Solution:\n    def checkInclusion(self, s1: str, s
 const S1 = "ab";
 const S2 = "eidbaooo";
 
-const generateTimeline = () => {
-  const timeline: any[] = [];
+export default function PermutationInString({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
+  const [activeEx, setActiveEx] = useState(0);
+  const [s1, setS1] = useState(EXAMPLES[0].s1);
+  const [s2, setS2] = useState(EXAMPLES[0].s2);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('✨ ')) clean = val.substring(3);
+      
+      const parts = clean.split(', s2 = ');
+      const s1Part = parts[0].replace('s1 = ', '').trim();
+      const s2Part = parts[1].trim();
+      
+      const parsedS1 = JSON.parse(s1Part);
+      const parsedS2 = JSON.parse(s2Part);
+      
+      if (typeof parsedS1 !== 'string' || typeof parsedS2 !== 'string') {
+        throw new Error();
+      }
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}s1 = "${parsedS1}", s2 = "${parsedS2}"`;
+      
+      let found = false;
+      if (parsedS1.length <= parsedS2.length) {
+        const count1 = Array(26).fill(0);
+        const count2 = Array(26).fill(0);
+        
+        for (let i = 0; i < parsedS1.length; i++) {
+          count1[parsedS1.charCodeAt(i) - 97]++;
+          count2[parsedS2.charCodeAt(i) - 97]++;
+        }
+
+        let matches = 0;
+        for (let i = 0; i < 26; i++) {
+          if (count1[i] === count2[i]) matches++;
+        }
+
+        if (matches === 26) found = true;
+        
+        if (!found) {
+          let l = 0;
+          for (let r = parsedS1.length; r < parsedS2.length; r++) {
+            let index = parsedS2.charCodeAt(r) - 97;
+            count2[index]++;
+            if (count1[index] === count2[index]) matches++;
+            else if (count1[index] + 1 === count2[index]) matches--;
+
+            index = parsedS2.charCodeAt(l) - 97;
+            count2[index]--;
+            if (count1[index] === count2[index]) matches++;
+            else if (count1[index] - 1 === count2[index]) matches--;
+            
+            l++;
+            if (matches === 26) {
+              found = true;
+              break;
+            }
+          }
+        }
+      }
+
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        s1: parsedS1,
+        s2: parsedS2,
+        output: found ? 'true' : 'false',
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setS1(parsedS1);
+      setS2(parsedS2);
+      reset();
+    } catch (e) {
+      alert('Invalid format! Please use: s1 = "ab", s2 = "eidbaooo"');
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    const parts = clean.split(', s2 = ');
+    const s1Part = parts[0].replace('s1 = ', '').trim();
+    const s2Part = parts[1].trim();
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        String s1 = ${s1Part};\n        String s2 = ${s2Part};\n        boolean res = checkInclusion(s1, s2);\n        System.out.println(res);\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    s1 = ${s1Part}\n    s2 = ${s2Part}\n    res = Solution().checkInclusion(s1, s2)\n    print(res)`);
+    }
+  };
+
+  const steps: any[] = [];
   
-  if (S1.length > S2.length) {
-    return [{ activeLines: [], activeStep: 1, desc: "s1 is longer than s2, impossible.", logic: "s1 > s2", logicClass: 'error' }];
-  }
-
-  const count1 = Array(26).fill(0);
-  const count2 = Array(26).fill(0);
-  
-  for (let i = 0; i < S1.length; i++) {
-    count1[S1.charCodeAt(i) - 97]++;
-    count2[S2.charCodeAt(i) - 97]++;
-  }
-
-  let matches = 0;
-  for (let i = 0; i < 26; i++) {
-    if (count1[i] === count2[i]) matches++;
-  }
-
-  timeline.push({
-    L: 0, R: S1.length - 1, matches, count1: [...count1], count2: [...count2], found: false,
-    activeLines: [2, 3, 4], activeStep: 1,
-    desc: `Initialize frequency maps for s1 and the first window of s2 (length ${S1.length}).`,
-    logic: `<strong>Init:</strong> First window set up.<br/>matches = ${matches} (out of 26).`, logicClass: 'info'
-  });
-
-  let found = matches === 26;
-  if (found) {
-    timeline.push({
-      L: 0, R: S1.length - 1, matches, count1: [...count1], count2: [...count2], found: true,
-      activeLines: [6], activeStep: 2,
-      desc: `First window is a perfect match!`,
-      logic: `<strong style="color:var(--green)">Success!</strong> matches == 26!`, logicClass: 'success'
-    });
-    return timeline;
-  }
-
-  let l = 0;
-  for (let r = S1.length; r < S2.length; r++) {
-    // Add right char
-    let index = S2.charCodeAt(r) - 97;
-    count2[index]++;
+  if (s1.length > s2.length) {
+    steps.push({ activeLines: [], activeStep: 1, desc: "s1 is longer than s2, impossible.", logic: "s1 > s2", logicClass: 'error', finalRes: 'false' });
+  } else {
+    const count1 = Array(26).fill(0);
+    const count2 = Array(26).fill(0);
     
-    if (count1[index] === count2[index]) matches++;
-    else if (count1[index] + 1 === count2[index]) matches--;
+    for (let i = 0; i < s1.length; i++) {
+      count1[s1.charCodeAt(i) - 97]++;
+      count2[s2.charCodeAt(i) - 97]++;
+    }
 
-    timeline.push({
-      L: l, R: r, matches, count1: [...count1], count2: [...count2], found: false,
-      activeLines: [8, 9, 10, 11], activeStep: 3,
-      desc: `Expand window to right. Add '${S2[r]}' to window map. Update matches to ${matches}.`,
-      logic: `Added <strong style="color:var(--sky)">'${S2[r]}'</strong>.<br/>matches = ${matches}`, logicClass: 'info'
+    let matches = 0;
+    for (let i = 0; i < 26; i++) {
+      if (count1[i] === count2[i]) matches++;
+    }
+
+    steps.push({
+      L: 0, R: s1.length - 1, matches, count1: [...count1], count2: [...count2], found: false,
+      activeLines: [2, 3, 4], activeStep: 1,
+      desc: `Initialize frequency maps for s1 and the first window of s2 (length ${s1.length}).`,
+      logic: `<strong>Init:</strong> First window set up.<br/>matches = ${matches} (out of 26).`, logicClass: 'info'
     });
 
-    // Remove left char
-    index = S2.charCodeAt(l) - 97;
-    count2[index]--;
-    
-    if (count1[index] === count2[index]) matches++;
-    else if (count1[index] - 1 === count2[index]) matches--;
-    
-    l++;
-
-    timeline.push({
-      L: l, R: r, matches, count1: [...count1], count2: [...count2], found: false,
-      activeLines: [13, 14, 15, 16], activeStep: 4,
-      desc: `Shrink window from left to maintain fixed size. Remove '${S2[l - 1]}' from window map. Update matches to ${matches}.`,
-      logic: `Removed <strong style="color:var(--pink)">'${S2[l - 1]}'</strong>.<br/>matches = ${matches}`, logicClass: 'info'
-    });
-
-    if (matches === 26) {
-      found = true;
-      timeline.push({
-        L: l, R: r, matches, count1: [...count1], count2: [...count2], found: true,
-        activeLines: [18], activeStep: 5,
-        desc: `Window is a permutation! (matches == 26)`,
-        logic: `<strong style="color:var(--green)">Success!</strong> Valid permutation found!`, logicClass: 'success'
+    let found = matches === 26;
+    if (found) {
+      steps.push({
+        L: 0, R: s1.length - 1, matches, count1: [...count1], count2: [...count2], found: true,
+        activeLines: [6], activeStep: 2,
+        desc: `First window is a perfect match!`,
+        logic: `<strong style="color:var(--green)">Success!</strong> matches == 26!`, logicClass: 'success',
+        finalRes: 'true'
       });
-      break;
+    } else {
+      let l = 0;
+      for (let r = s1.length; r < s2.length; r++) {
+        // Add right char
+        let index = s2.charCodeAt(r) - 97;
+        count2[index]++;
+        
+        if (count1[index] === count2[index]) matches++;
+        else if (count1[index] + 1 === count2[index]) matches--;
+
+        steps.push({
+          L: l, R: r, matches, count1: [...count1], count2: [...count2], found: false,
+          activeLines: [8, 9, 10, 11], activeStep: 3,
+          desc: `Expand window to right. Add '${s2[r]}' to window map. Update matches to ${matches}.`,
+          logic: `Added <strong style="color:var(--sky)">'${s2[r]}'</strong>.<br/>matches = ${matches}`, logicClass: 'info'
+        });
+
+        // Remove left char
+        index = s2.charCodeAt(l) - 97;
+        count2[index]--;
+        
+        if (count1[index] === count2[index]) matches++;
+        else if (count1[index] - 1 === count2[index]) matches--;
+        
+        l++;
+
+        steps.push({
+          L: l, R: r, matches, count1: [...count1], count2: [...count2], found: false,
+          activeLines: [13, 14, 15, 16], activeStep: 4,
+          desc: `Shrink window from left to maintain fixed size. Remove '${s2[l - 1]}' from window map. Update matches to ${matches}.`,
+          logic: `Removed <strong style="color:var(--pink)">'${s2[l - 1]}'</strong>.<br/>matches = ${matches}`, logicClass: 'info'
+        });
+
+        if (matches === 26) {
+          found = true;
+          steps.push({
+            L: l, R: r, matches, count1: [...count1], count2: [...count2], found: true,
+            activeLines: [18], activeStep: 5,
+            desc: `Window is a permutation! (matches == 26)`,
+            logic: `<strong style="color:var(--green)">Success!</strong> Valid permutation found!`, logicClass: 'success',
+            finalRes: 'true'
+          });
+          break;
+        }
+      }
+
+      if (!found) {
+        steps.push({
+          L: l, R: s2.length - 1, matches, count1: [...count1], count2: [...count2], found: false,
+          activeLines: [20], activeStep: 6,
+          desc: `Finished scanning s2. No permutation of s1 was found.`,
+          logic: `<span style="color:var(--hard)">Failure.</span> No permutation found.`, logicClass: 'error',
+          finalRes: 'false'
+        });
+      }
     }
   }
 
-  if (!found) {
-    timeline.push({
-      L: l, R: S2.length - 1, matches, count1: [...count1], count2: [...count2], found: false,
-      activeLines: [20], activeStep: 6,
-      desc: `Finished scanning s2. No permutation of s1 was found.`,
-      logic: `<span style="color:var(--hard)">Failure.</span> No permutation found.`, logicClass: 'error'
-    });
-  }
-
-  return timeline;
-};
-
-const TIMELINE = generateTimeline();
-
-export default function PermutationInString({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
-  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
-  const current = TIMELINE[step];
-  
-  if (activeTab === 'practice') {
-    return (
-      <VisualizerLayout>
-        <VPHeader title="Permutation in String" lcNum="567" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-        <PracticeWorkspace 
-          problemStatement={PROBLEM_STATEMENT}
-          examples={EXAMPLES}
-          constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
-        />
-      </VisualizerLayout>
-    );
-  }
+  const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle, reset } = useAnimationController(steps.length);
+  const current = steps[step];
 
   return (
     <VisualizerLayout>
       <VPHeader title="Permutation in String" lcNum="567" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div style={{ marginBottom: '24px' }}>
-        <ProblemStatement statement={PROBLEM_STATEMENT} examples={EXAMPLES} constraints={CONSTRAINTS} />
-      </div>
+      {activeTab === 'visualizer' ? (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parts = clean.split(', s2 = ');
+                const s1Part = parts[0].replace('s1 = ', '').trim();
+                const s2Part = parts[1].trim();
+                const inputS1 = examples[idx].s1 || JSON.parse(s1Part);
+                const inputS2 = examples[idx].s2 || JSON.parse(s2Part);
+                setS1(inputS1); 
+                setS2(inputS2);
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          </div>
 
       <VPBody 
         left={
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ControlBar step={step} maxSteps={TIMELINE.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
+            <ControlBar step={step} maxSteps={steps.length} isPlaying={isPlaying} speed={speed} onStepChange={handleStepChange} onPlayToggle={handlePlayToggle} onSpeedChange={setSpeed} />
             
             <ApproachBanner icon={<Columns size={20} />} title="Fixed Sliding Window (Matches Counter)"
               lines={["Count frequencies for s1 and the first window of s2.", "Track how many character frequencies match exactly between the two maps (out of 26 possible).", "Slide the window by 1: add the right char, remove the left char. Update the `matches` count incrementally. Return true if `matches == 26`."]}
@@ -187,7 +286,7 @@ export default function PermutationInString({ onBack }: { onBack?: () => void })
               
               <div className="animation-canvas" style={{ padding: 0, margin: 0, border: 'none', background: 'transparent' }}>
                 <div className="array-container" style={{ margin: '0 auto', gap: '4px', flexWrap: 'wrap' }}>
-                  {S2.split('').map((char, i) => {
+                  {s2.split('').map((char: string, i: number) => {
                     const isR = current.R === i;
                     const isL = current.L === i;
                     const isInWindow = i >= current.L && i <= current.R && !current.found;
@@ -204,8 +303,8 @@ export default function PermutationInString({ onBack }: { onBack?: () => void })
                           style={{
                             width: '32px',
                             height: '32px',
-                            background: isSuccess ? 'rgba(34, 197, 94, 0.2)' : isInWindow ? 'rgba(78, 205, 196, 0.15)' : 'var(--surface)',
-                            borderColor: isSuccess ? 'var(--easy)' : isR ? 'var(--sky)' : isL ? 'var(--pink)' : isInWindow ? 'rgba(78, 205, 196, 0.8)' : 'var(--border)',
+                            background: isSuccess ? 'var(--viz-green-bg)' : isInWindow ? 'rgba(78, 205, 196, 0.15)' : 'var(--surface)',
+                            borderColor: isSuccess ? 'var(--easy)' : isR ? 'var(--sky)' : isL ? 'var(--pink)' : isInWindow ? 'var(--viz-sky-bd)' : 'var(--border)',
                             color: 'var(--text)',
                             fontSize: '1rem',
                             fontWeight: 'bold'
@@ -263,7 +362,7 @@ export default function PermutationInString({ onBack }: { onBack?: () => void })
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Target Length</div>
-                  <div className="st-val">{S1.length}</div>
+                  <div className="st-val">{s1.length}</div>
                 </div>
                 <div className="stbox">
                   <div className="st-lbl">Current Length</div>
@@ -279,7 +378,7 @@ export default function PermutationInString({ onBack }: { onBack?: () => void })
             </div>
 
             <StepLogic html={current.logic} logicClass={current.logicClass} />
-            <StepCard title={step === TIMELINE.length - 1 ? "Done!" : "Sliding Window"} desc={current.desc} step={step} maxSteps={TIMELINE.length} isDone={step === TIMELINE.length - 1} />
+            <StepCard title={step === steps.length - 1 ? "Done!" : "Sliding Window"} desc={current.desc} step={step} maxSteps={steps.length} isDone={step === steps.length - 1} />
           </div>
         }
         right={
@@ -362,6 +461,43 @@ export default function PermutationInString({ onBack }: { onBack?: () => void })
           </div>
         }
       />
+      </>
+      ) : (
+        <PracticeWorkspace 
+          problemStatement={PROBLEM_STATEMENT}
+          examples={examples}
+          constraints={CONSTRAINTS}
+          defaultCodeJava={`import java.util.*;\n\nclass Main {\n    public static boolean checkInclusion(String s1, String s2) {\n        // Write your solution here\n        return false;\n    }\n\n    public static void main(String[] args) {\n        String s1 = "ab";\n        String s2 = "eidbaooo";\n        System.out.println("Output: " + checkInclusion(s1, s2));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def checkInclusion(self, s1: str, s2: str) -> bool:\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    s1 = "ab"\n    s2 = "eidbaooo"\n    print(f"Output: {Solution().checkInclusion(s1, s2)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                const pr = examples[idx].input;
+                let clean = pr;
+                if (pr.startsWith('✨ ')) clean = pr.substring(3);
+                const parts = clean.split(', s2 = ');
+                const s1Part = parts[0].replace('s1 = ', '').trim();
+                const s2Part = parts[1].trim();
+                const inputS1 = examples[idx].s1 || JSON.parse(s1Part);
+                const inputS2 = examples[idx].s2 || JSON.parse(s2Part);
+                setS1(inputS1); 
+                setS2(inputS2);
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
+        />
+      )}
     </VisualizerLayout>
   );
 }

@@ -213,10 +213,10 @@ export default function NumberRecentCalls({ onBack }: { onBack?: () => void }) {
                           let bg = 'var(--surface2)';
                           let border = 'var(--border-strong)';
                           if (isNew) {
-                            bg = 'rgba(78, 205, 196, 0.2)';
+                            bg = 'var(--viz-sky-bg)';
                             border = 'var(--sky)';
                           } else if (isBeingChecked) {
-                            bg = 'rgba(255, 193, 7, 0.2)';
+                            bg = 'var(--viz-yellow-bg)';
                             border = 'var(--warning)';
                           }
                           

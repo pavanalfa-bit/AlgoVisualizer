@@ -10,8 +10,14 @@ import {
 } from './VisualizerLayout';
 
 const EXAMPLES: any[] = [
-  { label: 'Example 1', matrix: [[1,1,0],[1,0,1],[0,0,0]], output: '[[1,0,0],[0,1,0],[1,1,1]]' },
-  { label: 'Example 2', matrix: [[1,1,0,0],[1,0,0,1],[0,1,1,1],[1,0,1,0]], output: '[[1,1,0,0],[0,1,1,0],[0,0,0,1],[1,0,1,0]]' }
+  { label: 'image = [[1,1,0],[1,0,1],[0,0,0]]', input: 'image = [[1,1,0],[1,0,1],[0,0,0]]', matrix: [[1,1,0],[1,0,1],[0,0,0]], output: '[[1,0,0],[0,1,0],[1,1,1]]', explanation: <></> },
+  { label: 'image = [[1,1,0,0],[1,0,0,1],[0,1,1,1],[1,0,1,0]]', input: 'image = [[1,1,0,0],[1,0,0,1],[0,1,1,1],[1,0,1,0]]', matrix: [[1,1,0,0],[1,0,0,1],[0,1,1,1],[1,0,1,0]], output: '[[1,1,0,0],[0,1,1,0],[0,0,0,1],[1,0,1,0]]', explanation: <></> }
+];
+
+const EDGE_CASES = [
+  "image = [[1,1],[0,0]]",
+  "image = [[0,0,0],[0,0,0],[0,0,0]]",
+  "image = [[1]]"
 ];
 
 const CODE_JAVA = [
@@ -43,9 +49,56 @@ const CODE_PY = [
 ];
 
 export function FlippingImage({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [originalMatrix, setOriginalMatrix] = useState(EXAMPLES[0].matrix);
   const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('image = ')) clean = val.substring(8);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0 || !Array.isArray(parsed[0])) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}image = ${JSON.stringify(parsed)}`;
+      const res = parsed.map((row: number[]) => {
+        const newRow = [...row].reverse();
+        return newRow.map(x => x ^ 1);
+      });
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        matrix: parsed,
+        output: JSON.stringify(res),
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setOriginalMatrix(parsed);
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: image = [[1,1,0],[1,0,1],[0,0,0]]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('image = ')) clean = clean.substring(8);
+    
+    if (lang === 'java') {
+      let javaArr = clean.replace(/\[/g, '{').replace(/\]/g, '}');
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[][] image = new int[][]{${javaArr}};\n        int[][] res = flipAndInvertImage(image);\n        for (int[] row : res) {\n            System.out.println(java.util.Arrays.toString(row));\n        }\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    image = ${clean}\n    res = Solution().flipAndInvertImage(image)\n    print(res)`);
+    }
+  };
 
   const n = originalMatrix.length;
 
@@ -152,8 +205,25 @@ export function FlippingImage({ onBack }: { onBack?: () => void }) {
       
       {tab === 'visualizer' ? (
         <>
-          <ProblemStatement {...problemProps} />
-          <ExamplePicker examples={EXAMPLES} activeEx={activeEx} onSelect={idx => { setActiveEx(idx); setOriginalMatrix(EXAMPLES[idx].matrix); reset(); }} />
+          <ProblemStatement {...problemProps} examples={examples} />
+          <ExamplePicker 
+            examples={examples} 
+            activeEx={activeEx} 
+            onSelect={idx => { 
+              setActiveEx(idx); 
+              let pr = examples[idx].input;
+              if (pr.startsWith('✨ ')) pr = pr.substring(3);
+              if (pr.startsWith('image = ')) pr = pr.substring(8);
+              const inputArr = examples[idx].matrix || JSON.parse(pr);
+              setOriginalMatrix(inputArr); 
+              reset(); 
+            }} 
+            onCustomInput={handleCustomInput}
+            onGenerateEdgeCase={async () => {
+              await new Promise(r => setTimeout(r, 1000));
+              return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+            }}
+          />
 
           <VPBody 
             left={
@@ -183,7 +253,7 @@ export function FlippingImage({ onBack }: { onBack?: () => void }) {
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     border: '2px solid', borderRadius: '6px',
                                     fontWeight: 'bold', fontSize: '1rem',
-                                    background: isBoth ? 'rgba(251, 191, 36, 0.3)' : isL ? 'rgba(78, 205, 196, 0.2)' : isR ? 'rgba(251, 191, 36, 0.2)' : 'var(--surface)',
+                                    background: isBoth ? 'var(--viz-yellow-bg)' : isL ? 'var(--viz-sky-bg)' : isR ? 'var(--viz-yellow-bg)' : 'var(--surface)',
                                     borderColor: isBoth ? 'var(--orange)' : isL ? 'var(--cyan)' : isR ? 'var(--orange)' : 'var(--border)',
                                     color: val === 1 ? 'var(--green)' : 'var(--muted)'
                                   }}
@@ -239,35 +309,32 @@ export function FlippingImage({ onBack }: { onBack?: () => void }) {
       ) : (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
-          examples={problemProps.examples}
+          examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`import java.util.Arrays;
-
-class Main {
-    public static int[][] flipAndInvertImage(int[][] image) {
-        // Write your solution here
-        return image;
-    }
-
-    public static void main(String[] args) {
-        int[][] image = {{1,1,0},{1,0,1},{0,0,0}};
-        int[][] result = flipAndInvertImage(image);
-        System.out.println("Output:");
-        for (int[] row : result) {
-            System.out.println(Arrays.toString(row));
-        }
-    }
-}`}
-          defaultCodePython={`def flipAndInvertImage(image):
-    # Write your solution here
-    pass
-
-if __name__ == "__main__":
-    image = [[1,1,0],[1,0,1],[0,0,0]]
-    res = flipAndInvertImage(image)
-    print("Output:")
-    for row in res:
-        print(row)`}
+          defaultCodeJava={`import java.util.Arrays;\n\nclass Main {\n    public static int[][] flipAndInvertImage(int[][] image) {\n        // Write your solution here\n        return image;\n    }\n\n    public static void main(String[] args) {\n        int[][] image = {{1,1,0},{1,0,1},{0,0,0}};\n        int[][] result = flipAndInvertImage(image);\n        System.out.println("Output:");\n        for (int[] row : result) {\n            System.out.println(Arrays.toString(row));\n        }\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def flipAndInvertImage(self, image):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    image = [[1,1,0],[1,0,1],[0,0,0]]\n    res = Solution().flipAndInvertImage(image)\n    print("Output:", res)`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('image = ')) pr = pr.substring(8);
+                const inputArr = examples[idx].matrix || JSON.parse(pr);
+                setOriginalMatrix(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       )}
     </VisualizerLayout>

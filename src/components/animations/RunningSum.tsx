@@ -10,9 +10,16 @@ import {
 } from './VisualizerLayout';
 
 const EXAMPLES: any[] = [
-  { label: '[1,2,3,4]', nums: [1,2,3,4], output: '[1,3,6,10]' },
-  { label: '[1,1,1,1]', nums: [1,1,1,1], output: '[1,2,3,4]' },
-  { label: '[3,1,2,10,1]', nums: [3,1,2,10,1], output: '[3,4,6,16,17]' },
+  { label: 'nums = [1,2,3,4]', input: 'nums = [1,2,3,4]', nums: [1,2,3,4], output: '[1,3,6,10]', explanation: <></> },
+  { label: 'nums = [1,1,1,1]', input: 'nums = [1,1,1,1]', nums: [1,1,1,1], output: '[1,2,3,4]', explanation: <></> },
+  { label: 'nums = [3,1,2,10,1]', input: 'nums = [3,1,2,10,1]', nums: [3,1,2,10,1], output: '[3,4,6,16,17]', explanation: <></> },
+];
+
+const EDGE_CASES = [
+  "nums = [1000]",
+  "nums = [0, 0, 0, 0]",
+  "nums = [9, -8, 7, -6]",
+  "nums = [-1, -2, -3]"
 ];
 
 const CODE_JAVA = [
@@ -34,9 +41,55 @@ const CODE_PY = [
 ];
 
 export function RunningSum({ onBack }: { onBack?: () => void }) {
+  const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(EXAMPLES[0].nums);
   const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+
+  const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
+    try {
+      let clean = val;
+      if (val.startsWith('nums = ')) clean = val.substring(7);
+      const parsed = JSON.parse(clean);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+
+      const formattedLabel = `${isEdgeCase ? '✨ ' : ''}nums = [${parsed.join(',')}]`;
+      const res = [...parsed];
+      for (let i = 1; i < res.length; i++) {
+        res[i] += res[i-1];
+      }
+      
+      const newEx = {
+        label: formattedLabel,
+        input: formattedLabel,
+        nums: parsed,
+        output: `[${res.join(',')}]`,
+        explanation: <></>
+      };
+
+      const newExamples = [...examples, newEx];
+      setExamples(newExamples);
+      setActiveEx(newExamples.length - 1);
+      setNums(parsed);
+      reset();
+    } catch (e) {
+      alert("Invalid format! Please use: nums = [1,2,3]");
+    }
+  };
+
+  const injectCode = (code: string, lang: string, exampleStr: string) => {
+    let clean = exampleStr;
+    if (exampleStr.startsWith('✨ ')) clean = exampleStr.substring(3);
+    if (clean.startsWith('nums = ')) clean = clean.substring(7);
+    
+    if (lang === 'java') {
+      return code.replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{[\s\S]*?\}/, 
+        `public static void main(String[] args) {\n        int[] nums = new int[]{${clean.replace(/[\[\]]/g, '')}};\n        int[] res = runningSum(nums);\n        System.out.println(java.util.Arrays.toString(res));\n    }`);
+    } else {
+      return code.replace(/if\s+__name__\s*==\s*['"]__main__['"]\s*:[\s\S]*/, 
+        `if __name__ == "__main__":\n    nums = ${clean}\n    res = Solution().runningSum(nums)\n    print(res)`);
+    }
+  };
 
   const n = nums.length;
 
@@ -110,8 +163,25 @@ export function RunningSum({ onBack }: { onBack?: () => void }) {
       
       {tab === 'visualizer' ? (
         <>
-          <ProblemStatement {...problemProps} />
-          <ExamplePicker examples={EXAMPLES} activeEx={activeEx} onSelect={idx => { setActiveEx(idx); setNums(EXAMPLES[idx].nums); reset(); }} />
+          <ProblemStatement {...problemProps} examples={examples} />
+          <ExamplePicker 
+            examples={examples} 
+            activeEx={activeEx} 
+            onSelect={idx => { 
+              setActiveEx(idx); 
+              let pr = examples[idx].input;
+              if (pr.startsWith('✨ ')) pr = pr.substring(3);
+              if (pr.startsWith('nums = ')) pr = pr.substring(7);
+              const inputArr = examples[idx].nums || JSON.parse(pr);
+              setNums(inputArr); 
+              reset(); 
+            }} 
+            onCustomInput={handleCustomInput}
+            onGenerateEdgeCase={async () => {
+              await new Promise(r => setTimeout(r, 1000));
+              return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+            }}
+          />
 
           <VPBody 
             left={
@@ -187,28 +257,32 @@ export function RunningSum({ onBack }: { onBack?: () => void }) {
       ) : (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
-          examples={problemProps.examples}
+          examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`import java.util.Arrays;
-
-class Main {
-    public static int[] runningSum(int[] nums) {
-        // Write your solution here
-        return new int[]{};
-    }
-
-    public static void main(String[] args) {
-        int[] nums = {1, 2, 3, 4};
-        System.out.println("Output: " + Arrays.toString(runningSum(nums)));
-    }
-}`}
-          defaultCodePython={`def runningSum(nums):
-    # Write your solution here
-    pass
-
-if __name__ == "__main__":
-    nums = [1, 2, 3, 4]
-    print(f"Output: {runningSum(nums)}")`}
+          defaultCodeJava={`import java.util.Arrays;\n\nclass Main {\n    public static int[] runningSum(int[] nums) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {1, 2, 3, 4};\n        System.out.println("Output: " + Arrays.toString(runningSum(nums)));\n    }\n}`}
+          defaultCodePython={`class Solution:\n    def runningSum(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [1, 2, 3, 4]\n    print(f"Output: {Solution().runningSum(nums)}")`}
+          examplePicker={
+            <ExamplePicker 
+              examples={examples} 
+              activeEx={activeEx} 
+              onSelect={idx => { 
+                setActiveEx(idx); 
+                let pr = examples[idx].input;
+                if (pr.startsWith('✨ ')) pr = pr.substring(3);
+                if (pr.startsWith('nums = ')) pr = pr.substring(7);
+                const inputArr = examples[idx].nums || JSON.parse(pr);
+                setNums(inputArr); 
+                reset(); 
+              }} 
+              onCustomInput={handleCustomInput}
+              onGenerateEdgeCase={async () => {
+                await new Promise(r => setTimeout(r, 1000));
+                return EDGE_CASES[Math.floor(Math.random() * EDGE_CASES.length)];
+              }}
+            />
+          }
+          activeExampleStr={examples[activeEx].label}
+          codeInjector={injectCode}
         />
       )}
     </VisualizerLayout>
