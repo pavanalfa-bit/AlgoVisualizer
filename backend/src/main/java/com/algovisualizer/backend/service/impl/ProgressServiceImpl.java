@@ -9,6 +9,8 @@ import com.algovisualizer.backend.repository.ProgressRepository;
 import com.algovisualizer.backend.repository.UserRepository;
 import com.algovisualizer.backend.service.ProgressService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,6 +29,7 @@ public class ProgressServiceImpl implements ProgressService {
     }
 
     @Override
+    @CacheEvict(value = "userProgress", key = "#userEmail")
     public ProgressResponse saveOrUpdateProgress(String userEmail, ProgressRequest request) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
@@ -46,6 +49,7 @@ public class ProgressServiceImpl implements ProgressService {
     }
 
     @Override
+    @Cacheable(value = "userProgress", key = "#userEmail")
     public List<ProgressResponse> getUserProgress(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
