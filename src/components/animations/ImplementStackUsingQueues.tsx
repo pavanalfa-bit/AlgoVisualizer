@@ -169,7 +169,7 @@ const TIMELINE = generateTimeline();
 const CALLS = ["push(1)", "push(2)", "top()", "pop()", "empty()"];
 
 export default function ImplementStackUsingQueues({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
   const current = TIMELINE[step];
   

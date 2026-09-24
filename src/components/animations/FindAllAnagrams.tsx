@@ -47,7 +47,7 @@ export default function FindAllAnagrams({ onBack }: { onBack?: () => void }) {
   const [activeEx, setActiveEx] = useState(0);
   const [s, setS] = useState(EXAMPLES[0].s);
   const [pStr, setP] = useState(EXAMPLES[0].p);
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {

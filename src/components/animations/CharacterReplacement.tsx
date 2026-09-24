@@ -46,7 +46,7 @@ export default function CharacterReplacement({ onBack }: { onBack?: () => void }
   const [activeEx, setActiveEx] = useState(0);
   const [s, setS] = useState(EXAMPLES[0].s);
   const [K, setK] = useState(EXAMPLES[0].k);
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {

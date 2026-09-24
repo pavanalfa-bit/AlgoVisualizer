@@ -108,8 +108,61 @@ const generateTimeline = (numbers: number[], target: number) => {
   return steps;
 };
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int[] twoSum(int[] numbers, int target) {",
+  "        int left = 0;",
+  "        // BUG 1: right points out of bounds",
+  "        int right = numbers.length;",
+  "        ",
+  "        while (left < right) {",
+  "            int sum = numbers[left] + numbers[right];",
+  "            ",
+  "            if (sum == target) {",
+  "                // BUG 2: Returns 0-indexed instead of 1-indexed",
+  "                return new int[]{left, right};",
+  "            } else if (sum < target) {",
+  "                left++;",
+  "            } else {",
+  "                right--;",
+  "            }",
+  "        }",
+  "        return new int[]{-1, -1};",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def twoSum(self, numbers: List[int], target: int) -> List[int]:",
+  "        left = 0",
+  "        # BUG 1: right points out of bounds",
+  "        right = len(numbers)",
+  "        ",
+  "        while left < right:",
+  "            curr_sum = numbers[left] + numbers[right]",
+  "            ",
+  "            if curr_sum == target:",
+  "                # BUG 2: Returns 0-indexed instead of 1-indexed",
+  "                return [left, right]",
+  "            elif curr_sum < target:",
+  "                left += 1",
+  "            else:",
+  "                right -= 1",
+  "                ",
+  "        return [-1, -1]"
+];
+const DEBUG_TEST_CASES = [
+  { input: 'numbers = [2,7,11,15], target = 9', expected: '[1,2]', description: 'Basic scenario' },
+  { input: 'numbers = [2,3,4], target = 6', expected: '[1,3]', description: 'Requires moving right pointer' }
+];
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'Look closely at the initialization of `right`. Also, what format does the problem ask you to return the indices in?' },
+  { level: 'specific' as const, text: '`right` should be `numbers.length - 1`. Also, Two Sum II specifically requires a 1-indexed array for the result, but you are returning 0-indexed.' },
+  { level: 'near-answer' as const, text: 'Change `int right = numbers.length;` to `numbers.length - 1`. Then, change the return statement to `new int[]{left + 1, right + 1};`.' }
+];
 export default function TwoSumII({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
@@ -196,16 +249,20 @@ export default function TwoSumII({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
-        <VPHeader title="Two Sum II - Input Array Is Sorted" lcNum="167" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+        <VPHeader hasDebug={true} title="Two Sum II - Input Array Is Sorted" lcNum="167" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [5, 11] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -240,7 +297,7 @@ export default function TwoSumII({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader title="Two Sum II - Input Array Is Sorted" lcNum="167" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+      <VPHeader hasDebug={true} title="Two Sum II - Input Array Is Sorted" lcNum="167" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
         <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />

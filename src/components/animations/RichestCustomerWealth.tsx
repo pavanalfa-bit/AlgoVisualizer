@@ -44,11 +44,53 @@ const CODE_PY = [
   `    return max_wealth`
 ];
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int maximumWealth(int[][] accounts) {",
+  "        for (int i = 0; i < accounts.length; i++) {",
+  "            // BUG: maxWealth resets to 0 for every customer",
+  "            int maxWealth = 0;",
+  "            int currentWealth = 0;",
+  "            for (int j = 0; j < accounts[i].length; j++) {",
+  "                currentWealth += accounts[i][j];",
+  "            }",
+  "            maxWealth = Math.max(maxWealth, currentWealth);",
+  "        }",
+  "        // Compilation error: maxWealth is not defined here, but if it was, it would be wrong",
+  "        return maxWealth;",
+  "    }",
+  "}"
+];
+
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def maximumWealth(self, accounts: List[List[int]]) -> int:",
+  "        for account in accounts:",
+  "            # BUG: max_wealth resets to 0 for every customer",
+  "            max_wealth = 0",
+  "            current_wealth = sum(account)",
+  "            max_wealth = max(max_wealth, current_wealth)",
+  "        return max_wealth"
+];
+
+const DEBUG_TEST_CASES = [
+  { input: '[[1,2,3],[3,2,1]]', expected: '6', description: 'Equal wealth' },
+  { input: '[[1,5],[7,3],[3,5]]', expected: '10', description: 'Three customers' },
+  { input: '[[2,8,7],[7,1,3],[1,9,5]]', expected: '17', description: 'Max wealth is first customer' }
+];
+
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'Look at the scope and initialization of max_wealth. What happens when the loop moves to the next customer?' },
+  { level: 'specific' as const, text: 'Because max_wealth is initialized inside the outer loop, it forgets the previous maximum and always resets to 0.' },
+  { level: 'near-answer' as const, text: 'Move the initialization of max_wealth to BEFORE the outer loop.' }
+];
+
 export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [accounts, setAccounts] = useState(EXAMPLES[0].accounts);
-  const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [tab, setTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {
@@ -171,15 +213,13 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader 
-        title="Richest Customer Wealth" 
+      <VPHeader hasDebug={true} title="Richest Customer Wealth" 
         lcNum="1672" 
         difficulty="Easy" 
         tag="Array Basics" 
         onBack={onBack} 
         activeTab={tab}
-        onTabChange={setTab}
-      />
+        onTabChange={setTab} />
       
       {tab === 'visualizer' ? (
         <>
@@ -286,13 +326,17 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
             }
           />
         </>
-      ) : (
+      ) : tab === 'practice' || tab === 'debug' ? (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
           examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`class Main {\n    public static int maximumWealth(int[][] accounts) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        int[][] accounts = {{1, 2, 3}, {3, 2, 1}};\n        System.out.println("Output: " + maximumWealth(accounts));\n    }\n}`}
-          defaultCodePython={`class Solution:\n    def maximumWealth(self, accounts):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    accounts = [[1, 2, 3], [3, 2, 1]]\n    print(f"Output: {Solution().maximumWealth(accounts)}")`}
+          defaultCodeJava={tab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : `class Main {\n    public static int maximumWealth(int[][] accounts) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        int[][] accounts = {{1, 2, 3}, {3, 2, 1}};\n        System.out.println("Output: " + maximumWealth(accounts));\n    }\n}`}
+          defaultCodePython={tab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : `class Solution:\n    def maximumWealth(self, accounts):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    accounts = [[1, 2, 3], [3, 2, 1]]\n    print(f"Output: {Solution().maximumWealth(accounts)}")`}
+          buggyLines={tab === 'debug' ? [4, 5] : undefined}
+          debugTestCases={tab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={tab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={tab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -316,7 +360,7 @@ export function RichestCustomerWealth({ onBack }: { onBack?: () => void }) {
           activeExampleStr={examples[activeEx].label}
           codeInjector={injectCode}
         />
-      )}
+      ) : null}
     </VisualizerLayout>
   );
 }

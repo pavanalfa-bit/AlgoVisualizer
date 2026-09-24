@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Sun, Moon, Sparkles, Search, User } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -9,8 +10,9 @@ import './index.css';
 function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [activeCategory, setActiveCategory] = useState('dashboard');
-  const [activeProblem, setActiveProblem] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -47,16 +49,20 @@ function App() {
       <div className="layout">
         <Sidebar activeCategory={activeCategory} setActiveCategory={(c) => {
           setActiveCategory(c);
-          setActiveProblem(null);
+          if (location.pathname.startsWith('/problem/')) navigate('/');
         }} />
         
-        {activeProblem ? (
-          <Visualizer problemId={activeProblem} onBack={() => setActiveProblem(null)} />
-        ) : activeCategory === 'system-design' ? (
-          <SystemDesign />
-        ) : (
-          <Dashboard category={activeCategory} onVisualize={setActiveProblem} isLoggedIn={isLoggedIn} />
-        )}
+        <Routes>
+          <Route path="/" element={
+            activeCategory === 'system-design' 
+              ? <SystemDesign />
+              : <Dashboard category={activeCategory} onVisualize={(id) => {
+                const [problemId, query] = id.split('?');
+                navigate(`/problem/${problemId}${query ? '?' + query : ''}`);
+              }} isLoggedIn={isLoggedIn} />
+          } />
+          <Route path="/problem/:id" element={<Visualizer />} />
+        </Routes>
       </div>
     </div>
   );

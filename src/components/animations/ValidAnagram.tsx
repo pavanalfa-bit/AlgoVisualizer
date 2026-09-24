@@ -48,7 +48,7 @@ export default function ValidAnagram({ onBack }: { onBack?: () => void }) {
   const [activeEx, setActiveEx] = useState(0);
   const [s, setS] = useState(EXAMPLES[0].s);
   const [tStr, setT] = useState(EXAMPLES[0].t);
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {

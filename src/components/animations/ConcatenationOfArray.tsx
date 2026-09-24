@@ -44,11 +44,50 @@ const CODE_PY = [
   `    return ans`
 ];
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int[] getConcatenation(int[] nums) {",
+  "        int n = nums.length;",
+  "        int[] ans = new int[2 * n];",
+  "        for (int i = 0; i < n; i++) {",
+  "            ans[i] = nums[i];",
+  "            // BUG: Index out of bounds on nums",
+  "            ans[i + n] = nums[i + n];",
+  "        }",
+  "        return ans;",
+  "    }",
+  "}"
+];
+
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def getConcatenation(self, nums: List[int]) -> List[int]:",
+  "        n = len(nums)",
+  "        ans = [0] * (2 * n)",
+  "        for i in range(n):",
+  "            ans[i] = nums[i]",
+  "            # BUG: Index out of bounds on nums",
+  "            ans[i + n] = nums[i + n]",
+  "        return ans"
+];
+
+const DEBUG_TEST_CASES = [
+  { input: '[1, 2, 1]', expected: '[1, 2, 1, 1, 2, 1]', description: 'Basic array' },
+  { input: '[1, 3, 2, 1]', expected: '[1, 3, 2, 1, 1, 3, 2, 1]', description: 'Four elements' }
+];
+
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'Look closely at what value is being assigned to the second half of the array.' },
+  { level: 'specific' as const, text: 'Line 8 tries to read from nums[i + n]. But nums only has size n! This causes an Out of Bounds error.' },
+  { level: 'near-answer' as const, text: 'The second half should be an exact copy of the first half. Change nums[i + n] to just nums[i].' }
+];
+
 export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(EXAMPLES[0].nums);
-  const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [tab, setTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {
@@ -153,15 +192,13 @@ export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader 
-        title="Concatenation of Array" 
+      <VPHeader hasDebug={true} title="Concatenation of Array" 
         lcNum="1929" 
         difficulty="Easy" 
         tag="Array Basics" 
         onBack={onBack} 
         activeTab={tab}
-        onTabChange={setTab}
-      />
+        onTabChange={setTab} />
       
       {tab === 'visualizer' ? (
         <>
@@ -278,13 +315,17 @@ export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
             }
           />
         </>
-      ) : (
+      ) : tab === 'practice' || tab === 'debug' ? (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
           examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`import java.util.Arrays;\n\nclass Main {\n    public static int[] getConcatenation(int[] nums) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {1, 2, 1};\n        System.out.println("Input: " + Arrays.toString(nums));\n        System.out.println("Output: " + Arrays.toString(getConcatenation(nums)));\n    }\n}`}
-          defaultCodePython={`class Solution:\n    def getConcatenation(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [1, 2, 1]\n    print(f"Input: {nums}")\n    print(f"Output: {Solution().getConcatenation(nums)}")`}
+          defaultCodeJava={tab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : `import java.util.Arrays;\n\nclass Main {\n    public static int[] getConcatenation(int[] nums) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {1, 2, 1};\n        System.out.println("Input: " + Arrays.toString(nums));\n        System.out.println("Output: " + Arrays.toString(getConcatenation(nums)));\n    }\n}`}
+          defaultCodePython={tab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : `class Solution:\n    def getConcatenation(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [1, 2, 1]\n    print(f"Input: {nums}")\n    print(f"Output: {Solution().getConcatenation(nums)}")`}
+          buggyLines={tab === 'debug' ? [7, 8] : undefined}
+          debugTestCases={tab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={tab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={tab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -308,7 +349,7 @@ export function ConcatenationOfArray({ onBack }: { onBack?: () => void }) {
           activeExampleStr={examples[activeEx].label}
           codeInjector={injectCode}
         />
-      )}
+      ) : null}
     </VisualizerLayout>
   );
 }

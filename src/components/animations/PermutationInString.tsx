@@ -48,7 +48,7 @@ export default function PermutationInString({ onBack }: { onBack?: () => void })
   const [activeEx, setActiveEx] = useState(0);
   const [s1, setS1] = useState(EXAMPLES[0].s1);
   const [s2, setS2] = useState(EXAMPLES[0].s2);
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {

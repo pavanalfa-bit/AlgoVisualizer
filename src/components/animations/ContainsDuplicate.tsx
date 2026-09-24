@@ -49,6 +49,50 @@ const DEFAULT_JAVA = `class Main {\n    public static boolean containsDuplicate(
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def containsDuplicate(self, nums: list[int]) -> bool:\n        # Write your code here\n        pass`;
 
+const BUGGY_JAVA_CODE = [
+  "import java.util.HashSet;",
+  "",
+  "class Solution {",
+  "    public boolean containsDuplicate(int[] nums) {",
+  "        HashSet<Integer> set = new HashSet<>();",
+  "        ",
+  "        for (int i = 0; i < nums.length; i++) {",
+  "            if (set.contains(nums[i])) {",
+  "                return true;",
+  "            }",
+  "            // BUG 1: Forgot to actually add the element to the set!",
+  "            // set.add(nums[i]);",
+  "        }",
+  "        ",
+  "        // BUG 2: Returns true when it should return false",
+  "        return true;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def containsDuplicate(self, nums: list[int]) -> bool:",
+  "        seen = set()",
+  "        ",
+  "        for num in nums:",
+  "            if num in seen:",
+  "                return True",
+  "            # BUG 1: Forgot to actually add the element to the set!",
+  "            # seen.add(num)",
+  "            ",
+  "        # BUG 2: Returns True when it should return False",
+  "        return True"
+];
+const DEBUG_TEST_CASES = [
+  { input: "[1,2,3,1]", expected: "true" },
+  { input: "[1,2,3,4]", expected: "false" }
+];
+const DEBUG_HINTS = [
+  { level: "vague" as const, text: "The set starts empty. How are elements getting into the set?" },
+  { level: "specific" as const, text: "If the loop finishes without finding any duplicates, does the array contain duplicates?" }
+];
+
+
 const NUMS = [1, 2, 3, 1];
 
 
@@ -116,7 +160,7 @@ const generateTimeline = (arr: number[]) => {
 
 
 export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState([1, 2, 3, 1]);
@@ -181,7 +225,7 @@ export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
         <VPHeader title="Contains Duplicate" lcNum="217" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
@@ -189,8 +233,12 @@ export default function ContainsDuplicate({ onBack }: { onBack?: () => void }) {
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [11, 16] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 

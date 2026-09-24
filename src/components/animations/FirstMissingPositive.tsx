@@ -50,6 +50,61 @@ const DEFAULT_JAVA = `class Main {\n    public static int firstMissingPositive(i
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def firstMissingPositive(self, nums: list[int]) -> int:\n        # Write your code here\n        pass`;
 
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int firstMissingPositive(int[] nums) {",
+  "        int i = 0;",
+  "        while (i < nums.length) {",
+  "            // BUG 1: Missing the check nums[i] <= nums.length",
+  "            if (nums[i] > 0 && nums[nums[i] - 1] != nums[i]) {",
+  "                // BUG 2: Swapping modifies nums[i] first, breaking the second assignment!",
+  "                int temp = nums[nums[i] - 1];",
+  "                nums[nums[i] - 1] = nums[i];",
+  "                nums[i] = temp;",
+  "            } else {",
+  "                i++;",
+  "            }",
+  "        }",
+  "        ",
+  "        for (int j = 0; j < nums.length; j++) {",
+  "            if (nums[j] != j + 1) {",
+  "                return j + 1;",
+  "            }",
+  "        }",
+  "        ",
+  "        return nums.length + 1;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def firstMissingPositive(self, nums: list[int]) -> int:",
+  "        i = 0",
+  "        while i < len(nums):",
+  "            # BUG 1: Missing the check nums[i] <= len(nums)",
+  "            if nums[i] > 0 and nums[nums[i] - 1] != nums[i]:",
+  "                # BUG 2: Swapping modifies nums[i] first, breaking the second assignment!",
+  "                nums[nums[i] - 1], nums[i] = nums[i], nums[nums[i] - 1]",
+  "            else:",
+  "                i += 1",
+  "                ",
+  "        for j in range(len(nums)):",
+  "            if nums[j] != j + 1:",
+  "                return j + 1",
+  "                ",
+  "        return len(nums) + 1"
+];
+const DEBUG_TEST_CASES = [
+  { input: "[1,2,0]", expected: "3" },
+  { input: "[3,4,-1,1]", expected: "2" },
+  { input: "[7,8,9,11,12]", expected: "1" }
+];
+const DEBUG_HINTS = [
+  { level: "vague" as const, text: "If nums[i] is 100, and the array length is 5, what happens when you try to access nums[100 - 1]?" },
+  { level: "specific" as const, text: "If you change nums[nums[i] - 1] first, the value of nums[i] used on the next line is the OLD value of nums[nums[i] - 1]!" }
+];
+
+
 const NUMS = [3, 4, -1, 1];
 
 
@@ -156,7 +211,7 @@ const generateTimeline = (nums: number[]) => {
 
 
 export default function FirstMissingPositive({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState([3, 4, -1, 1]);
@@ -232,7 +287,7 @@ export default function FirstMissingPositive({ onBack }: { onBack?: () => void }
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
         <VPHeader title="First Missing Positive" lcNum="41" difficulty="Hard" tag="Hashing" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
@@ -240,8 +295,12 @@ export default function FirstMissingPositive({ onBack }: { onBack?: () => void }
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [6, 8] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 

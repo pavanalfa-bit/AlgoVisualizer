@@ -111,8 +111,69 @@ const generateTimeline = (n1: number[], m: number, n2: number[], n: number) => {
   return timeline;
 };
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public void merge(int[] nums1, int m, int[] nums2, int n) {",
+  "        int p1 = m - 1;",
+  "        int p2 = n - 1;",
+  "        // BUG 1: p starts at m instead of m + n - 1",
+  "        int p = m;",
+  "        ",
+  "        while (p1 >= 0 && p2 >= 0) {",
+  "            if (nums1[p1] > nums2[p2]) {",
+  "                nums1[p] = nums1[p1];",
+  "                p1--;",
+  "            } else {",
+  "                nums1[p] = nums2[p2];",
+  "                p2--;",
+  "            }",
+  "            p--;",
+  "        }",
+  "        ",
+  "        // BUG 2: Uses > instead of >=",
+  "        while (p2 > 0) {",
+  "            nums1[p] = nums2[p2];",
+  "            p2--;",
+  "            p--;",
+  "        }",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def merge(self, nums1: List[int], m: int, nums2: List[int], n: int) -> None:",
+  "        p1 = m - 1",
+  "        p2 = n - 1",
+  "        # BUG 1: p starts at m instead of m + n - 1",
+  "        p = m",
+  "        ",
+  "        while p1 >= 0 and p2 >= 0:",
+  "            if nums1[p1] > nums2[p2]:",
+  "                nums1[p] = nums1[p1]",
+  "                p1 -= 1",
+  "            else:",
+  "                nums1[p] = nums2[p2]",
+  "                p2 -= 1",
+  "            p -= 1",
+  "            ",
+  "        # BUG 2: Uses > instead of >=",
+  "        while p2 > 0:",
+  "            nums1[p] = nums2[p2]",
+  "            p2 -= 1",
+  "            p -= 1"
+];
+const DEBUG_TEST_CASES = [
+  { input: 'nums1 = [1,2,3,0,0,0], m = 3\nnums2 = [2,5,6], n = 3', expected: '[1,2,2,3,5,6]', description: 'Basic merge scenario' },
+  { input: 'nums1 = [0], m = 0\nnums2 = [1], n = 1', expected: '[1]', description: 'First array is empty' }
+];
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'Look closely at where the pointer `p` starts. Is it at the end of the actual values in nums1, or at the end of the ENTIRE allocated array?' },
+  { level: 'specific' as const, text: '`p` needs to start at the very last index of `nums1`, which is `m + n - 1`. Also, check the condition in the second while loop.' },
+  { level: 'near-answer' as const, text: 'Change `int p = m;` to `int p = m + n - 1;`. Then, change the second while loop condition from `p2 > 0` to `p2 >= 0` so it includes the 0th index.' }
+];
 export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
@@ -192,10 +253,10 @@ export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
-        <VPHeader title="Merge Sorted Array" lcNum="88" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+        <VPHeader hasDebug={true} title="Merge Sorted Array" lcNum="88" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
@@ -207,8 +268,12 @@ export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
             <div><code>-10⁹ &lt;= nums1[i], nums2[j] &lt;= 10⁹</code></div>
             <div style={{ marginTop: '12px', color: 'var(--text)' }}><strong>Follow up:</strong> Can you come up with an algorithm that runs in <code>O(m + n)</code> time?</div>
           </>}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [6, 16] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -240,7 +305,7 @@ export default function MergeSortedArray({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader title="Merge Sorted Array" lcNum="88" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+      <VPHeader hasDebug={true} title="Merge Sorted Array" lcNum="88" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       {activeTab === 'visualizer' && (
         <div style={{ marginBottom: '24px' }}>
           <ProblemStatement 

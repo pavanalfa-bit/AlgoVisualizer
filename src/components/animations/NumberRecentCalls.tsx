@@ -132,7 +132,7 @@ const generateTimeline = () => {
 const TIMELINE = generateTimeline();
 
 export default function NumberRecentCalls({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const { step, isPlaying, speed, setSpeed, handleStepChange, handlePlayToggle } = useAnimationController(TIMELINE.length);
   const current = TIMELINE[step];
   

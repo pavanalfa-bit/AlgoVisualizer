@@ -93,6 +93,13 @@ export const allProblems = [
   { id: 'gfg-allocate', num: 0, title: 'Allocate Minimum Pages', difficulty: 'hard' as const, category: 'binarysearch', subtopic: 'Search on Answer' },
   { id: 'ib-painters', num: 0, title: 'Painter\'s Partition Problem', difficulty: 'hard' as const, category: 'binarysearch', subtopic: 'Search on Answer' },
   { id: '4', num: 4, title: 'Median of Two Sorted Arrays', difficulty: 'hard' as const, category: 'binarysearch', subtopic: 'Advanced' },
+  
+  // LINKED LISTS
+  { id: '206', num: 206, title: 'Reverse Linked List', difficulty: 'easy' as const, category: 'linkedlist', subtopic: 'Reversal' },
+  { id: '21', num: 21, title: 'Merge Two Sorted Lists', difficulty: 'easy' as const, category: 'linkedlist', subtopic: 'Two Pointers' },
+  { id: '141', num: 141, title: 'Linked List Cycle', difficulty: 'easy' as const, category: 'linkedlist', subtopic: 'Two Pointers' },
+  { id: '19', num: 19, title: 'Remove Nth Node From End', difficulty: 'medium' as const, category: 'linkedlist', subtopic: 'Two Pointers' },
+  { id: '143', num: 143, title: 'Reorder List', difficulty: 'medium' as const, category: 'linkedlist', subtopic: 'Reversal' },
 ];
 
 function OverviewDashboard({ onVisualize, isLoggedIn }: { onVisualize: (id: string) => void, isLoggedIn?: boolean }) {
@@ -175,6 +182,14 @@ function OverviewDashboard({ onVisualize, isLoggedIn }: { onVisualize: (id: stri
       <div className="problem-grid" style={{ marginBottom: '40px' }}>
         {allProblems.filter(p => ['two-sum', 'trapping-rain', 'container-water'].includes(p.id)).map(p => (
           <ProblemCard key={p.id} {...p} onVisualize={onVisualize} />
+        ))}
+      </div>
+
+      <div className="ov-section-title" style={{ color: 'var(--red)' }}><Pickaxe size={20} color="var(--red)" /> Debug Challenges</div>
+      <div style={{ marginBottom: '16px', fontSize: '0.9rem', color: 'var(--muted)' }}>Find the subtle bug in these implementations by tracing the visualizer.</div>
+      <div className="problem-grid" style={{ marginBottom: '40px' }}>
+        {allProblems.filter(p => ['206'].includes(p.id)).map(p => (
+          <ProblemCard key={`debug-${p.id}`} {...p} isDebugChallenge={true} onVisualize={() => onVisualize(`${p.id}?mode=debug`)} />
         ))}
       </div>
 

@@ -107,8 +107,51 @@ const DEFAULT_JAVA = `class Main {\n    public static int removeDuplicates(int[]
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def removeDuplicates(self, nums) -> int:\n        # Write your code here\n        pass`;
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int removeDuplicates(int[] nums) {",
+  "        if (nums.length == 0) return 0;",
+  "        ",
+  "        int k = 1;",
+  "        // BUG 1: Loop starts at 0 instead of 1",
+  "        for (int i = 0; i < nums.length; i++) {",
+  "            // BUG 2: Compares to nums[i+1] which can cause IndexOutOfBounds",
+  "            if (nums[i] != nums[i + 1]) {",
+  "                nums[k] = nums[i];",
+  "                k++;",
+  "            }",
+  "        }",
+  "        return k;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def removeDuplicates(self, nums: List[int]) -> int:",
+  "        if not nums: return 0",
+  "        ",
+  "        k = 1",
+  "        # BUG 1: Loop starts at 0 instead of 1",
+  "        for i in range(len(nums)):",
+  "            # BUG 2: Compares to nums[i+1] which can cause IndexError",
+  "            if nums[i] != nums[i + 1]:",
+  "                nums[k] = nums[i]",
+  "                k += 1",
+  "                ",
+  "        return k"
+];
+const DEBUG_TEST_CASES = [
+  { input: '[1,1,2]', expected: '[1,2]', description: 'Basic duplicates' },
+  { input: '[0,0,1,1,1,2,2,3,3,4]', expected: '[0,1,2,3,4]', description: 'Multiple duplicates' }
+];
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'You are iterating through the array and comparing elements, but what happens when `i` is at the very last index?' },
+  { level: 'specific' as const, text: 'When `i` is at `nums.length - 1`, `nums[i + 1]` goes out of bounds. Also, `k` starts at 1, so the loop should start at 1 and compare to `nums[i - 1]`.' },
+  { level: 'near-answer' as const, text: 'Change the loop to `for (int i = 1; i < nums.length; i++)` and change the condition to `if (nums[i] != nums[i - 1])`.' }
+];
 export default function RemoveDuplicates({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
@@ -175,16 +218,20 @@ export default function RemoveDuplicates({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
-        <VPHeader title="Remove Duplicates from Sorted Array" lcNum="26" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+        <VPHeader hasDebug={true} title="Remove Duplicates from Sorted Array" lcNum="26" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [7, 9] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -213,7 +260,7 @@ export default function RemoveDuplicates({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader title="Remove Duplicates from Sorted Array" lcNum="26" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+      <VPHeader hasDebug={true} title="Remove Duplicates from Sorted Array" lcNum="26" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
         <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />

@@ -156,8 +156,73 @@ const DEFAULT_JAVA = `import java.util.List;\nimport java.util.ArrayList;\n\ncla
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def threeSum(self, nums) -> list[list[int]]:\n        # Write your code here\n        pass`;
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public List<List<Integer>> threeSum(int[] nums) {",
+  "        List<List<Integer>> res = new ArrayList<>();",
+  "        // BUG 1: Forgets to sort the array",
+  "        ",
+  "        for (int i = 0; i < nums.length - 2; i++) {",
+  "            // BUG 2: Forgets to skip duplicates for i",
+  "            ",
+  "            int left = i + 1;",
+  "            int right = nums.length - 1;",
+  "            ",
+  "            while (left < right) {",
+  "                int sum = nums[i] + nums[left] + nums[right];",
+  "                if (sum == 0) {",
+  "                    res.add(Arrays.asList(nums[i], nums[left], nums[right]));",
+  "                    left++;",
+  "                    right--;",
+  "                    // BUG 3: Forgets to skip duplicates for left and right",
+  "                } else if (sum < 0) {",
+  "                    left++;",
+  "                } else {",
+  "                    right--;",
+  "                }",
+  "            }",
+  "        }",
+  "        return res;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def threeSum(self, nums: List[int]) -> List[List[int]]:",
+  "        res = []",
+  "        # BUG 1: Forgets to sort the array",
+  "        ",
+  "        for i in range(len(nums) - 2):",
+  "            # BUG 2: Forgets to skip duplicates for i",
+  "            ",
+  "            left, right = i + 1, len(nums) - 1",
+  "            ",
+  "            while left < right:",
+  "                curr_sum = nums[i] + nums[left] + nums[right]",
+  "                if curr_sum == 0:",
+  "                    res.append([nums[i], nums[left], nums[right]])",
+  "                    left += 1",
+  "                    right -= 1",
+  "                    # BUG 3: Forgets to skip duplicates for left and right",
+  "                elif curr_sum < 0:",
+  "                    left += 1",
+  "                else:",
+  "                    right -= 1",
+  "                    ",
+  "        return res"
+];
+const DEBUG_TEST_CASES = [
+  { input: '[-1,0,1,2,-1,-4]', expected: '[[-1,-1,2],[-1,0,1]]', description: 'Requires sorting and de-duping' },
+  { input: '[0,0,0,0]', expected: '[[0,0,0]]', description: 'Multiple zeros' }
+];
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'This approach only works if the array is sorted. Also, how do you prevent duplicate triplets from being added to the result?' },
+  { level: 'specific' as const, text: 'Add `Arrays.sort(nums)` at the beginning. To avoid duplicates, you must skip over identical elements for `i`, `left`, and `right`.' },
+  { level: 'near-answer' as const, text: '1. Sort the array. \n2. Inside the for-loop, add `if (i > 0 && nums[i] == nums[i-1]) continue;`. \n3. Inside the `sum == 0` block, add while loops to increment `left` and decrement `right` as long as they point to the same value as their previous element.' }
+];
 export default function ThreeSum({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
@@ -227,16 +292,20 @@ export default function ThreeSum({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
-        <VPHeader title="3Sum" lcNum="15" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+        <VPHeader hasDebug={true} title="3Sum" lcNum="15" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [4, 7, 18] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -265,7 +334,7 @@ export default function ThreeSum({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader title="3Sum" lcNum="15" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+      <VPHeader hasDebug={true} title="3Sum" lcNum="15" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
         <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />

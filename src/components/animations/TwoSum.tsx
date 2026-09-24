@@ -86,8 +86,59 @@ const CONSTRAINTS = (
   </>
 );
 
+const DEFAULT_JAVA = `class Main {\n    public static int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = new int[]{2, 7, 11, 15};\n        int target = 9;\n        int[] result = twoSum(nums, target);\n        if (result.length == 2) {\n            System.out.println("Result: [" + result[0] + ", " + result[1] + "]");\n        } else {\n            System.out.println("Result: []");\n        }\n    }\n}`;
+const DEFAULT_PYTHON = `def twoSum(nums, target):\n    # Write your code here\n    pass\n\nif __name__ == "__main__":\n    nums = [2, 7, 11, 15]\n    target = 9\n    print(f"Result: {twoSum(nums, target)}")`;
+
+const BUGGY_JAVA_CODE = [
+  "import java.util.HashMap;",
+  "",
+  "class Solution {",
+  "    public int[] twoSum(int[] nums, int target) {",
+  "        HashMap<Integer, Integer> map = new HashMap<>();",
+  "        ",
+  "        for (int i = 0; i < nums.length; i++) {",
+  "            // BUG 1: Adding current element BEFORE checking complement",
+  "            map.put(nums[i], i);",
+  "            ",
+  "            int complement = target - nums[i];",
+  "            // BUG 2: Will match with itself!",
+  "            if (map.containsKey(complement)) {",
+  "                return new int[] { map.get(complement), i };",
+  "            }",
+  "        }",
+  "        ",
+  "        return new int[] {};",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def twoSum(self, nums: list[int], target: int) -> list[int]:",
+  "        numMap = {}",
+  "        ",
+  "        for i, num in enumerate(nums):",
+  "            # BUG 1: Adding current element BEFORE checking complement",
+  "            numMap[num] = i",
+  "            ",
+  "            complement = target - num",
+  "            # BUG 2: Will match with itself!",
+  "            if complement in numMap:",
+  "                return [numMap[complement], i]",
+  "                ",
+  "        return []"
+];
+const DEBUG_TEST_CASES = [
+  { input: "nums = [2,7,11,15], target = 9", expected: "[0,1]" },
+  { input: "nums = [3,2,4], target = 6", expected: "[1,2]" },
+  { input: "nums = [3,3], target = 6", expected: "[0,1]" }
+];
+const DEBUG_HINTS = [
+  { level: "vague" as const, text: "If you add the current number to the map first, what happens if the target is exactly double this number?" },
+  { level: "specific" as const, text: "Is it possible that map.get(complement) returns the exact same index as i?" }
+];
+
 export default function TwoSum({ onBack }: { onBack?: () => void }) {
-  const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [tab, setTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const [examples, setExamples] = useState(INITIAL_EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(INITIAL_EXAMPLES[0].nums);
@@ -180,7 +231,7 @@ export default function TwoSum({ onBack }: { onBack?: () => void }) {
     return () => clearTimeout(timer);
   }, [isPlaying, step, steps.length, speed]);
 
-  if (tab === 'practice') {
+  if (tab === 'practice' || tab === 'debug') {
     return (
       <VisualizerLayout>
         <VPHeader title="Two Sum" lcNum="1" difficulty="Easy" tag="Hashing" onBack={onBack} activeTab={tab} onTabChange={setTab} />
@@ -188,8 +239,12 @@ export default function TwoSum({ onBack }: { onBack?: () => void }) {
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={`class Main {\n    public static int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = new int[]{2, 7, 11, 15};\n        int target = 9;\n        int[] result = twoSum(nums, target);\n        if (result.length == 2) {\n            System.out.println("Result: [" + result[0] + ", " + result[1] + "]");\n        } else {\n            System.out.println("Result: []");\n        }\n    }\n}`}
-          defaultCodePython={`def twoSum(nums, target):\n    # Write your code here\n    pass\n\nif __name__ == "__main__":\n    nums = [2, 7, 11, 15]\n    target = 9\n    print(f"Result: {twoSum(nums, target)}")`}
+          defaultCodeJava={tab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={tab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={tab === 'debug' ? [9, 13] : undefined}
+          debugTestCases={tab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={tab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={tab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 

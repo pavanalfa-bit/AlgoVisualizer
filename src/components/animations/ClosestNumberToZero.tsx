@@ -49,11 +49,49 @@ const CODE_PY = [
   `    return closest`
 ];
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int findClosestNumber(int[] nums) {",
+  "        int closest = nums[0];",
+  "        for (int i = 1; i < nums.length; i++) {",
+  "            if (Math.abs(nums[i]) < Math.abs(closest)) {",
+  "                closest = nums[i];",
+  "            }",
+  "            // BUG: Missing tie-breaker for equal absolute values",
+  "        }",
+  "        return closest;",
+  "    }",
+  "}"
+];
+
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def findClosestNumber(self, nums: List[int]) -> int:",
+  "        closest = nums[0]",
+  "        for i in range(1, len(nums)):",
+  "            if abs(nums[i]) < abs(closest):",
+  "                closest = nums[i]",
+  "            # BUG: Missing tie-breaker for equal absolute values",
+  "        return closest"
+];
+
+const DEBUG_TEST_CASES = [
+  { input: '[-4,-2,1,4,8]', expected: '1', description: 'Standard array' },
+  { input: '[2,-1,1]', expected: '1', description: 'Tie breaker: return the larger number' }
+];
+
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'The problem requires that if there are multiple answers, you return the one with the largest value.' },
+  { level: 'specific' as const, text: 'Your code updates closest ONLY if the absolute value is strictly smaller. What if abs(nums[i]) == abs(closest)?' },
+  { level: 'near-answer' as const, text: 'Add an else-if condition to check if abs(nums[i]) == abs(closest) and nums[i] > closest. If so, update closest.' }
+];
+
 export function ClosestNumberToZero({ onBack }: { onBack?: () => void }) {
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(EXAMPLES[0].nums);
-  const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [tab, setTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {
@@ -193,15 +231,13 @@ export function ClosestNumberToZero({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader 
-        title="Find Closest Number to Zero" 
+      <VPHeader hasDebug={true} title="Find Closest Number to Zero" 
         lcNum="2239" 
         difficulty="Easy" 
         tag="Array Basics" 
         onBack={onBack} 
         activeTab={tab}
-        onTabChange={setTab}
-      />
+        onTabChange={setTab} />
       
       {tab === 'visualizer' ? (
         <>
@@ -303,13 +339,17 @@ export function ClosestNumberToZero({ onBack }: { onBack?: () => void }) {
             }
           />
         </>
-      ) : (
+      ) : tab === 'practice' || tab === 'debug' ? (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
           examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`class Main {\n    public static int findClosestNumber(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {-4,-2,1,4,8};\n        System.out.println("Output: " + findClosestNumber(nums));\n    }\n}`}
-          defaultCodePython={`class Solution:\n    def findClosestNumber(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [-4,-2,1,4,8]\n    print(f"Output: {Solution().findClosestNumber(nums)}")`}
+          defaultCodeJava={tab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : `class Main {\n    public static int findClosestNumber(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {-4,-2,1,4,8};\n        System.out.println("Output: " + findClosestNumber(nums));\n    }\n}`}
+          defaultCodePython={tab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : `class Solution:\n    def findClosestNumber(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [-4,-2,1,4,8]\n    print(f"Output: {Solution().findClosestNumber(nums)}")`}
+          buggyLines={tab === 'debug' ? [6, 7, 8] : undefined}
+          debugTestCases={tab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={tab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={tab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -333,7 +373,7 @@ export function ClosestNumberToZero({ onBack }: { onBack?: () => void }) {
           activeExampleStr={examples[activeEx].label}
           codeInjector={injectCode}
         />
-      )}
+      ) : null}
     </VisualizerLayout>
   );
 }

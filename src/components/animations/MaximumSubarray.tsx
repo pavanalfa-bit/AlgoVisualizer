@@ -50,6 +50,48 @@ const DEFAULT_JAVA = `class Main {\n    public static int maxSubArray(int[] nums
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def maxSubArray(self, nums: list[int]) -> int:\n        # Write your code here\n        pass`;
 
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int maxSubArray(int[] nums) {",
+  "        // BUG 1: Initialized to 0 instead of nums[0]",
+  "        int currentSum = 0;",
+  "        int maxSum = nums[0];",
+  "        ",
+  "        for (int i = 1; i < nums.length; i++) {",
+  "            currentSum = Math.max(nums[i], currentSum + nums[i]);",
+  "            // BUG 2: Updating maxSum with nums[i] instead of currentSum",
+  "            maxSum = Math.max(maxSum, nums[i]);",
+  "        }",
+  "        ",
+  "        return maxSum;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def maxSubArray(self, nums: list[int]) -> int:",
+  "        # BUG 1: Initialized to 0 instead of nums[0]",
+  "        currentSum = 0",
+  "        maxSum = nums[0]",
+  "        ",
+  "        for i in range(1, len(nums)):",
+  "            currentSum = max(nums[i], currentSum + nums[i])",
+  "            # BUG 2: Updating maxSum with nums[i] instead of currentSum",
+  "            maxSum = max(maxSum, nums[i])",
+  "            ",
+  "        return maxSum"
+];
+const DEBUG_TEST_CASES = [
+  { input: "[-2,1,-3,4,-1,2,1,-5,4]", expected: "6" },
+  { input: "[1]", expected: "1" },
+  { input: "[-5,-1,-3]", expected: "-1" }
+];
+const DEBUG_HINTS = [
+  { level: "vague" as const, text: "If the array contains all negative numbers, what should currentSum start at?" },
+  { level: "specific" as const, text: "Are we trying to maximize a single element, or the contiguous sum we've been building?" }
+];
+
+
 const NUMS = [-2, 1, -3, 4, -1, 2, 1, -5, 4];
 
 
@@ -112,7 +154,7 @@ const generateTimeline = (arr: number[]) => {
 
 
 export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState([-2, 1, -3, 4, -1, 2, 1, -5, 4]);
@@ -178,7 +220,7 @@ export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
         <VPHeader title="Maximum Subarray" lcNum="53" difficulty="Medium" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
@@ -186,8 +228,12 @@ export default function MaximumSubarray({ onBack }: { onBack?: () => void }) {
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [4, 10] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 

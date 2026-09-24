@@ -53,7 +53,7 @@ const CODE_PY = [
 export function SpiralMatrix({ onBack }: { onBack?: () => void }) {
   const [activeEx, setActiveEx] = useState(0);
   const [matrixData, setMatrixData] = useState(EXAMPLES[0].matrix);
-  const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [tab, setTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const m = matrixData.length;
   const n = matrixData[0].length;

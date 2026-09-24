@@ -52,6 +52,57 @@ const DEFAULT_JAVA = `class Main {\n    public static int maxProfit(int[] prices
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def maxProfit(self, prices: list[int]) -> int:\n        # Write your code here\n        pass`;
 
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int maxProfit(int[] prices) {",
+  "        // BUG 1: Initialized to 0 instead of Integer.MAX_VALUE",
+  "        int minPrice = 0;",
+  "        int maxProfit = 0;",
+  "        ",
+  "        for (int i = 0; i < prices.length; i++) {",
+  "            if (prices[i] < minPrice) {",
+  "                minPrice = prices[i];",
+  "            } else {",
+  "                // BUG 2: Subtracting backwards",
+  "                int profit = minPrice - prices[i];",
+  "                if (profit > maxProfit) {",
+  "                    maxProfit = profit;",
+  "                }",
+  "            }",
+  "        }",
+  "        ",
+  "        return maxProfit;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def maxProfit(self, prices: list[int]) -> int:",
+  "        # BUG 1: Initialized to 0 instead of float('inf')",
+  "        minPrice = 0",
+  "        maxProfit = 0",
+  "        ",
+  "        for price in prices:",
+  "            if price < minPrice:",
+  "                minPrice = price",
+  "            else:",
+  "                # BUG 2: Subtracting backwards",
+  "                profit = minPrice - price",
+  "                if profit > maxProfit:",
+  "                    maxProfit = profit",
+  "                    ",
+  "        return maxProfit"
+];
+const DEBUG_TEST_CASES = [
+  { input: "[7,1,5,3,6,4]", expected: "5" },
+  { input: "[7,6,4,3,1]", expected: "0" }
+];
+const DEBUG_HINTS = [
+  { level: "vague" as const, text: "If minPrice starts at 0, and all stock prices are positive, will we ever buy the stock?" },
+  { level: "specific" as const, text: "Profit is calculated as (Sell Price - Buy Price). Are you doing that correctly?" }
+];
+
+
 const INITIAL_PRICES = [7, 1, 5, 3, 6, 4];
 
 const generateTimeline = (pricesArr: number[]) => {
@@ -111,7 +162,7 @@ const generateTimeline = (pricesArr: number[]) => {
 };
 
 export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [prices, setPrices] = useState(INITIAL_PRICES);
@@ -170,7 +221,7 @@ export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
         <VPHeader title="Best Time to Buy and Sell Stock" lcNum="121" difficulty="Easy" tag="Sliding Window" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
@@ -178,8 +229,12 @@ export default function BuyAndSellStock({ onBack }: { onBack?: () => void }) {
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [4, 12] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 

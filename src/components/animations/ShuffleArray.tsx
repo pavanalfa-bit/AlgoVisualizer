@@ -41,11 +41,48 @@ const CODE_PY = [
   `    return ans`
 ];
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int[] shuffle(int[] nums, int n) {",
+  "        int[] ans = new int[2 * n];",
+  "        for (int i = 0; i < n; i++) {",
+  "            ans[2 * i] = nums[i];",
+  "            // BUG: Off by one error out of bounds",
+  "            ans[2 * i + 1] = nums[n + i + 1];",
+  "        }",
+  "        return ans;",
+  "    }",
+  "}"
+];
+
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def shuffle(self, nums: List[int], n: int) -> List[int]:",
+  "        ans = [0] * (2 * n)",
+  "        for i in range(n):",
+  "            ans[2 * i] = nums[i]",
+  "            # BUG: Off by one error out of bounds",
+  "            ans[2 * i + 1] = nums[n + i + 1]",
+  "        return ans"
+];
+
+const DEBUG_TEST_CASES = [
+  { input: '[2,5,1,3,4,7], 3', expected: '[2,3,5,4,1,7]', description: 'Basic array' },
+  { input: '[1,2,3,4,4,3,2,1], 4', expected: '[1,4,2,3,3,2,4,1]', description: 'Larger array' }
+];
+
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'Look closely at the index being accessed for the second half of the elements.' },
+  { level: 'specific' as const, text: 'nums[n + i + 1] shifts the index by an extra 1. On the last iteration, this will throw an Out of Bounds error.' },
+  { level: 'near-answer' as const, text: 'Remove the +1. The correct index for the y elements is just n + i.' }
+];
+
 export function ShuffleArray({ onBack }: { onBack?: () => void }) {
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(EXAMPLES[0].nums);
-  const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [tab, setTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {
@@ -160,15 +197,13 @@ export function ShuffleArray({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader 
-        title="Shuffle the Array" 
+      <VPHeader hasDebug={true} title="Shuffle the Array" 
         lcNum="1470" 
         difficulty="Easy" 
         tag="Array Basics" 
         onBack={onBack} 
         activeTab={tab}
-        onTabChange={setTab}
-      />
+        onTabChange={setTab} />
       
       {tab === 'visualizer' ? (
         <>
@@ -296,13 +331,17 @@ export function ShuffleArray({ onBack }: { onBack?: () => void }) {
             }
           />
         </>
-      ) : (
+      ) : tab === 'practice' || tab === 'debug' ? (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
           examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`import java.util.Arrays;\n\nclass Main {\n    public static int[] shuffle(int[] nums, int n) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {2,5,1,3,4,7};\n        int n = 3;\n        System.out.println("Output: " + Arrays.toString(shuffle(nums, n)));\n    }\n}`}
-          defaultCodePython={`class Solution:\n    def shuffle(self, nums, n):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [2,5,1,3,4,7]\n    n = 3\n    print(f"Output: {Solution().shuffle(nums, n)}")`}
+          defaultCodeJava={tab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : `import java.util.Arrays;\n\nclass Main {\n    public static int[] shuffle(int[] nums, int n) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {2,5,1,3,4,7};\n        int n = 3;\n        System.out.println("Output: " + Arrays.toString(shuffle(nums, n)));\n    }\n}`}
+          defaultCodePython={tab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : `class Solution:\n    def shuffle(self, nums, n):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [2,5,1,3,4,7]\n    n = 3\n    print(f"Output: {Solution().shuffle(nums, n)}")`}
+          buggyLines={tab === 'debug' ? [6, 7] : undefined}
+          debugTestCases={tab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={tab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={tab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -326,7 +365,7 @@ export function ShuffleArray({ onBack }: { onBack?: () => void }) {
           activeExampleStr={examples[activeEx].label}
           codeInjector={injectCode}
         />
-      )}
+      ) : null}
     </VisualizerLayout>
   );
 }

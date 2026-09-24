@@ -48,11 +48,53 @@ const CODE_PY = [
   `    return image`
 ];
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int[][] flipAndInvertImage(int[][] image) {",
+  "        int n = image.length;",
+  "        for (int i = 0; i < n; i++) {",
+  "            for (int j = 0; j < (n + 1) / 2; j++) {",
+  "                int temp = image[i][j];",
+  "                // BUG: Uses ^ 0 instead of ^ 1 so bits don't invert",
+  "                image[i][j] = image[i][n - 1 - j] ^ 0;",
+  "                image[i][n - 1 - j] = temp ^ 0;",
+  "            }",
+  "        }",
+  "        return image;",
+  "    }",
+  "}"
+];
+
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def flipAndInvertImage(self, image: List[List[int]]) -> List[List[int]]:",
+  "        n = len(image)",
+  "        for i in range(n):",
+  "            for j in range((n + 1) // 2):",
+  "                temp = image[i][j]",
+  "                # BUG: Uses ^ 0 instead of ^ 1",
+  "                image[i][j] = image[i][n - 1 - j] ^ 0",
+  "                image[i][n - 1 - j] = temp ^ 0",
+  "        return image"
+];
+
+const DEBUG_TEST_CASES = [
+  { input: '[[1,1,0],[1,0,1],[0,0,0]]', expected: '[[1,0,0],[0,1,0],[1,1,1]]', description: '3x3 Matrix' },
+  { input: '[[1,1,0,0],[1,0,0,1],[0,1,1,1],[1,0,1,0]]', expected: '[[1,1,0,0],[0,1,1,0],[0,0,0,1],[1,0,1,0]]', description: '4x4 Matrix' }
+];
+
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'The array reverses correctly, but the inversion (0 to 1, 1 to 0) fails. Look at the bitwise operator.' },
+  { level: 'specific' as const, text: 'XORing a number with 0 leaves it unchanged (1 ^ 0 = 1, 0 ^ 0 = 0).' },
+  { level: 'near-answer' as const, text: 'To flip the bit, you must XOR it with 1. Change ^ 0 to ^ 1.' }
+];
+
 export function FlippingImage({ onBack }: { onBack?: () => void }) {
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [originalMatrix, setOriginalMatrix] = useState(EXAMPLES[0].matrix);
-  const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [tab, setTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {
@@ -193,15 +235,13 @@ export function FlippingImage({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader 
-        title="Flipping an Image" 
+      <VPHeader hasDebug={true} title="Flipping an Image" 
         lcNum="832" 
         difficulty="Easy" 
         tag="Array Basics" 
         onBack={onBack} 
         activeTab={tab}
-        onTabChange={setTab}
-      />
+        onTabChange={setTab} />
       
       {tab === 'visualizer' ? (
         <>
@@ -306,13 +346,17 @@ export function FlippingImage({ onBack }: { onBack?: () => void }) {
             }
           />
         </>
-      ) : (
+      ) : tab === 'practice' || tab === 'debug' ? (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
           examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`import java.util.Arrays;\n\nclass Main {\n    public static int[][] flipAndInvertImage(int[][] image) {\n        // Write your solution here\n        return image;\n    }\n\n    public static void main(String[] args) {\n        int[][] image = {{1,1,0},{1,0,1},{0,0,0}};\n        int[][] result = flipAndInvertImage(image);\n        System.out.println("Output:");\n        for (int[] row : result) {\n            System.out.println(Arrays.toString(row));\n        }\n    }\n}`}
-          defaultCodePython={`class Solution:\n    def flipAndInvertImage(self, image):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    image = [[1,1,0],[1,0,1],[0,0,0]]\n    res = Solution().flipAndInvertImage(image)\n    print("Output:", res)`}
+          defaultCodeJava={tab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : `import java.util.Arrays;\n\nclass Main {\n    public static int[][] flipAndInvertImage(int[][] image) {\n        // Write your solution here\n        return image;\n    }\n\n    public static void main(String[] args) {\n        int[][] image = {{1,1,0},{1,0,1},{0,0,0}};\n        int[][] result = flipAndInvertImage(image);\n        System.out.println("Output:");\n        for (int[] row : result) {\n            System.out.println(Arrays.toString(row));\n        }\n    }\n}`}
+          defaultCodePython={tab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : `class Solution:\n    def flipAndInvertImage(self, image):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    image = [[1,1,0],[1,0,1],[0,0,0]]\n    res = Solution().flipAndInvertImage(image)\n    print("Output:", res)`}
+          buggyLines={tab === 'debug' ? [7, 8, 9] : undefined}
+          debugTestCases={tab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={tab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={tab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -336,7 +380,7 @@ export function FlippingImage({ onBack }: { onBack?: () => void }) {
           activeExampleStr={examples[activeEx].label}
           codeInjector={injectCode}
         />
-      )}
+      ) : null}
     </VisualizerLayout>
   );
 }

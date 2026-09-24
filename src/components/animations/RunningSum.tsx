@@ -40,11 +40,44 @@ const CODE_PY = [
   `    return nums`
 ];
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int[] runningSum(int[] nums) {",
+  "        for (int i = 1; i < nums.length; i++) {",
+  "            // BUG: Adds the current element to itself instead of previous sum",
+  "            nums[i] += nums[i];",
+  "        }",
+  "        return nums;",
+  "    }",
+  "}"
+];
+
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def runningSum(self, nums: List[int]) -> List[int]:",
+  "        for i in range(1, len(nums)):",
+  "            # BUG: Adds the current element to itself",
+  "            nums[i] += nums[i]",
+  "        return nums"
+];
+
+const DEBUG_TEST_CASES = [
+  { input: '[1, 2, 3, 4]', expected: '[1, 3, 6, 10]', description: 'Basic array' },
+  { input: '[1, 1, 1, 1, 1]', expected: '[1, 2, 3, 4, 5]', description: 'All ones' }
+];
+
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'Trace the loop manually. If nums is [1, 2, 3], what does nums[1] become?' },
+  { level: 'specific' as const, text: 'nums[1] += nums[1] means nums[1] becomes 2 + 2 = 4. But the running sum should be 1 + 2 = 3.' },
+  { level: 'near-answer' as const, text: 'You need to add the PREVIOUS running sum to the current element. Change the right side to nums[i-1].' }
+];
+
 export function RunningSum({ onBack }: { onBack?: () => void }) {
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [nums, setNums] = useState(EXAMPLES[0].nums);
-  const [tab, setTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [tab, setTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
 
   const handleCustomInput = (val: string, isEdgeCase?: boolean) => {
     try {
@@ -151,15 +184,13 @@ export function RunningSum({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader 
-        title="Running Sum of 1D Array" 
+      <VPHeader hasDebug={true} title="Running Sum of 1D Array" 
         lcNum="1480" 
         difficulty="Easy" 
         tag="Array Basics" 
         onBack={onBack} 
         activeTab={tab}
-        onTabChange={setTab}
-      />
+        onTabChange={setTab} />
       
       {tab === 'visualizer' ? (
         <>
@@ -254,13 +285,17 @@ export function RunningSum({ onBack }: { onBack?: () => void }) {
             }
           />
         </>
-      ) : (
+      ) : tab === 'practice' || tab === 'debug' ? (
         <PracticeWorkspace 
           problemStatement={problemProps.statement}
           examples={examples}
           constraints={problemProps.constraints}
-          defaultCodeJava={`import java.util.Arrays;\n\nclass Main {\n    public static int[] runningSum(int[] nums) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {1, 2, 3, 4};\n        System.out.println("Output: " + Arrays.toString(runningSum(nums)));\n    }\n}`}
-          defaultCodePython={`class Solution:\n    def runningSum(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [1, 2, 3, 4]\n    print(f"Output: {Solution().runningSum(nums)}")`}
+          defaultCodeJava={tab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : `import java.util.Arrays;\n\nclass Main {\n    public static int[] runningSum(int[] nums) {\n        // Write your solution here\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {1, 2, 3, 4};\n        System.out.println("Output: " + Arrays.toString(runningSum(nums)));\n    }\n}`}
+          defaultCodePython={tab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : `class Solution:\n    def runningSum(self, nums):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    nums = [1, 2, 3, 4]\n    print(f"Output: {Solution().runningSum(nums)}")`}
+          buggyLines={tab === 'debug' ? [4, 5] : undefined}
+          debugTestCases={tab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={tab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={tab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -284,7 +319,7 @@ export function RunningSum({ onBack }: { onBack?: () => void }) {
           activeExampleStr={examples[activeEx].label}
           codeInjector={injectCode}
         />
-      )}
+      ) : null}
     </VisualizerLayout>
   );
 }

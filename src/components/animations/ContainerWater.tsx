@@ -112,8 +112,66 @@ const generateTimeline = (heights: number[]) => {
   return timeline;
 };
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int maxArea(int[] height) {",
+  "        int left = 0;",
+  "        int right = height.length - 1;",
+  "        int maxArea = 0;",
+  "        ",
+  "        while (left < right) {",
+  "            // BUG 1: Uses max instead of min for the height",
+  "            int currentHeight = Math.max(height[left], height[right]);",
+  "            int currentWidth = right - left;",
+  "            int currentArea = currentHeight * currentWidth;",
+  "            ",
+  "            maxArea = Math.max(maxArea, currentArea);",
+  "            ",
+  "            // BUG 2: Moves the wrong pointer",
+  "            if (height[left] > height[right]) {",
+  "                left++;",
+  "            } else {",
+  "                right--;",
+  "            }",
+  "        }",
+  "        return maxArea;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def maxArea(self, height: List[int]) -> int:",
+  "        left, right = 0, len(height) - 1",
+  "        max_area = 0",
+  "        ",
+  "        while left < right:",
+  "            # BUG 1: Uses max instead of min for the height",
+  "            current_height = max(height[left], height[right])",
+  "            current_width = right - left",
+  "            current_area = current_height * current_width",
+  "            ",
+  "            max_area = max(max_area, current_area)",
+  "            ",
+  "            # BUG 2: Moves the wrong pointer",
+  "            if height[left] > height[right]:",
+  "                left += 1",
+  "            else:",
+  "                right -= 1",
+  "                ",
+  "        return max_area"
+];
+const DEBUG_TEST_CASES = [
+  { input: '[1,8,6,2,5,4,8,3,7]', expected: '49', description: 'Requires shrinking correctly' },
+  { input: '[1,1]', expected: '1', description: 'Smallest container' }
+];
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'When calculating the area, water spills over if you use the taller line! Also, how do you decide which pointer to move?' },
+  { level: 'specific' as const, text: 'The water height is bounded by the `min` of the two lines, not the `max`. Furthermore, to maximize area, you should discard the shorter line, not the taller line.' },
+  { level: 'near-answer' as const, text: 'Change `currentHeight` to use `Math.min(...)`. Then, change the if condition to `if (height[left] < height[right]) { left++; } else { right--; }`.' }
+];
 export default function ContainerWater({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const [examples, setExamples] = useState(INITIAL_EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [heights, setHeights] = useState(INITIAL_EXAMPLES[0].height);
@@ -169,16 +227,20 @@ export default function ContainerWater({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
-        <VPHeader title="Container With Most Water" lcNum="11" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+        <VPHeader hasDebug={true} title="Container With Most Water" lcNum="11" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [9, 14] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -205,7 +267,7 @@ export default function ContainerWater({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader title="Container With Most Water" lcNum="11" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+      <VPHeader hasDebug={true} title="Container With Most Water" lcNum="11" difficulty="Medium" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
         <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />

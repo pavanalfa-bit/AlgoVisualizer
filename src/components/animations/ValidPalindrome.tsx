@@ -169,7 +169,7 @@ const generateTimeline = (str: string) => {
 };
 
 export default function ValidPalindrome({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   const [examples, setExamples] = useState(INITIAL_EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
   const [s, setS] = useState(INITIAL_EXAMPLES[0].s);

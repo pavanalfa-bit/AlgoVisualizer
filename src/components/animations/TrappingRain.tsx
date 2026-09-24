@@ -135,8 +135,65 @@ const generateTimeline = (arr: number[]) => {
   return steps;
 };
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int trap(int[] height) {",
+  "        if (height.length == 0) return 0;",
+  "        int left = 0, right = height.length - 1;",
+  "        int leftMax = 0, rightMax = 0;",
+  "        int water = 0;",
+  "        ",
+  "        while (left < right) {",
+  "            if (height[left] < height[right]) {",
+  "                // BUG 1: Updates water before updating leftMax",
+  "                water += leftMax - height[left];",
+  "                leftMax = Math.max(leftMax, height[left]);",
+  "                left++;",
+  "            } else {",
+  "                // BUG 2: Updates water before updating rightMax",
+  "                water += rightMax - height[right];",
+  "                rightMax = Math.max(rightMax, height[right]);",
+  "                right--;",
+  "            }",
+  "        }",
+  "        return water;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def trap(self, height: List[int]) -> int:",
+  "        if not height: return 0",
+  "        left, right = 0, len(height) - 1",
+  "        left_max, right_max = 0, 0",
+  "        water = 0",
+  "        ",
+  "        while left < right:",
+  "            if height[left] < height[right]:",
+  "                # BUG 1: Updates water before updating leftMax",
+  "                water += left_max - height[left]",
+  "                left_max = max(left_max, height[left])",
+  "                left += 1",
+  "            else:",
+  "                # BUG 2: Updates water before updating rightMax",
+  "                water += right_max - height[right]",
+  "                right_max = max(right_max, height[right])",
+  "                right -= 1",
+  "                ",
+  "        return water"
+];
+const DEBUG_TEST_CASES = [
+  { input: '[0,1,0,2,1,0,1,3,2,1,2,1]', expected: '6', description: 'Standard jagged profile' },
+  { input: '[4,2,0,3,2,5]', expected: '9', description: 'Deep valley' }
+];
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'You are subtracting `height[left]` from `leftMax` before ensuring `leftMax` is actually up to date for that position.' },
+  { level: 'specific' as const, text: 'If `height[left]` is larger than `leftMax`, `leftMax - height[left]` will be negative, and you will subtract water from the total!' },
+  { level: 'near-answer' as const, text: 'Swap the order of operations inside the if/else block: First update `leftMax = Math.max(...)`, THEN add `leftMax - height[left]` to `water`.' }
+];
 export default function TrappingRain({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
@@ -202,16 +259,20 @@ export default function TrappingRain({ onBack }: { onBack?: () => void }) {
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
-        <VPHeader title="Trapping Rain Water" lcNum="42" difficulty="Hard" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+        <VPHeader hasDebug={true} title="Trapping Rain Water" lcNum="42" difficulty="Hard" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [11, 17] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -240,7 +301,7 @@ export default function TrappingRain({ onBack }: { onBack?: () => void }) {
 
   return (
     <VisualizerLayout>
-      <VPHeader title="Trapping Rain Water" lcNum="42" difficulty="Hard" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+      <VPHeader hasDebug={true} title="Trapping Rain Water" lcNum="42" difficulty="Hard" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
         <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />

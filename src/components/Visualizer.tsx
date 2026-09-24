@@ -63,13 +63,18 @@ import NumberRecentCalls from './animations/NumberRecentCalls';
 import StudentsUnableToEat from './animations/StudentsUnableToEat';
 import ImplementStackUsingQueues from './animations/ImplementStackUsingQueues';
 import DesignCircularQueue from './animations/DesignCircularQueue';
+import ReverseLinkedList from './animations/ReverseLinkedList';
+import MergeTwoSortedLists from './animations/MergeTwoSortedLists';
+import LinkedListCycle from './animations/LinkedListCycle';
+import RemoveNthNode from './animations/RemoveNthNode';
+import { useParams, useNavigate } from 'react-router-dom';
+import ReorderList from './animations/ReorderList';
 
-interface VisualizerProps {
-  problemId: string;
-  onBack: () => void;
-}
+export function Visualizer() {
+  const { id: problemId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const onBack = () => navigate('/');
 
-export function Visualizer({ problemId, onBack }: VisualizerProps) {
   const renderAnimation = () => {
     switch (problemId) {
       case 'two-sum':
@@ -198,6 +203,16 @@ export function Visualizer({ problemId, onBack }: VisualizerProps) {
         return <ImplementStackUsingQueues onBack={onBack} />;
       case '622':
         return <DesignCircularQueue onBack={onBack} />;
+      case '206':
+        return <ReverseLinkedList onBack={onBack} />;
+      case '21':
+        return <MergeTwoSortedLists onBack={onBack} />;
+      case '141':
+        return <LinkedListCycle onBack={onBack} />;
+      case '19':
+        return <RemoveNthNode onBack={onBack} />;
+      case '143':
+        return <ReorderList onBack={onBack} />;
       // Future animations would go here
       default:
         return (
@@ -218,9 +233,10 @@ export function Visualizer({ problemId, onBack }: VisualizerProps) {
     '217', '41', '205', '242', '49', '1189', // Hashing
     '13', '14', '271', '344', '125', '680', '5', '647', // Strings
     '933', '1700', '225', '622', // Queue
-    '704', '35', '268', '34', '162', '153', '33', '81', '875', '1011', '410', 'gfg-allocate', 'ib-painters', '4' // Binary Search
+    '704', '35', '268', '34', '162', '153', '33', '81', '875', '1011', '410', 'gfg-allocate', 'ib-painters', '4', // Binary Search
+    '206', '21', '141', '19', '143' // Linked Lists
   ];
-  if (fullScreenLayoutIds.includes(problemId)) {
+  if (problemId && fullScreenLayoutIds.includes(problemId)) {
     return (
       <div style={{ flex: 1, height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         {renderAnimation()}

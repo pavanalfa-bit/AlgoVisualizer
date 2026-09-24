@@ -107,8 +107,62 @@ const DEFAULT_JAVA = `class Main {\n    public static int[] sortedSquares(int[] 
 }`;
 const DEFAULT_PYTHON = `class Solution:\n    def sortedSquares(self, nums) -> list[int]:\n        # Write your code here\n        pass`;
 
+
+const BUGGY_JAVA_CODE = [
+  "class Solution {",
+  "    public int[] sortedSquares(int[] nums) {",
+  "        int n = nums.length;",
+  "        int[] result = new int[n];",
+  "        int left = 0;",
+  "        int right = n - 1;",
+  "        ",
+  "        // BUG 1: Starts inserting from 0 instead of n - 1",
+  "        for (int i = 0; i < n; i++) {",
+  "            int square;  // BUG 2: Missing Math.abs() conceptually, compares actual values not squares",
+  "            if (Math.abs(nums[left]) < Math.abs(nums[right])) {",
+  "                square = nums[right] * nums[right];",
+  "                right--;",
+  "            } else {",
+  "                square = nums[left] * nums[left];",
+  "                left++;",
+  "            }",
+  "            result[i] = square;",
+  "        }",
+  "        return result;",
+  "    }",
+  "}"
+];
+const BUGGY_PYTHON_CODE = [
+  "class Solution:",
+  "    def sortedSquares(self, nums: List[int]) -> List[int]:",
+  "        n = len(nums)",
+  "        result = [0] * n",
+  "        left, right = 0, n - 1",
+  "        ",
+  "        # BUG 1: Starts inserting from 0 instead of n - 1",
+  "        for i in range(n):",
+  "            # BUG 2: Compares absolute values correctly, but inserts in the wrong order",
+  "            if abs(nums[left]) < abs(nums[right]):",
+  "                square = nums[right] * nums[right]",
+  "                right -= 1",
+  "            else:",
+  "                square = nums[left] * nums[left]",
+  "                left += 1",
+  "            result[i] = square",
+  "            ",
+  "        return result"
+];
+const DEBUG_TEST_CASES = [
+  { input: '[-4,-1,0,3,10]', expected: '[0,1,9,16,100]', description: 'Contains negative numbers' },
+  { input: '[-7,-3,2,3,11]', expected: '[4,9,9,49,121]', description: 'Negative magnitude is larger' }
+];
+const DEBUG_HINTS = [
+  { level: 'vague' as const, text: 'You are picking the largest squares first, but you are placing them at the beginning of the `result` array.' },
+  { level: 'specific' as const, text: 'If you find the largest square, it should go at the end of the array, not the beginning. The `for` loop needs to count down.' },
+  { level: 'near-answer' as const, text: 'Change the loop to count backwards: `for (int i = n - 1; i >= 0; i--)`. This way, the largest squares get placed at the end of `result`.' }
+];
 export default function SquaresSortedArray({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'practice' | 'debug'>('visualizer');
   
   const [examples, setExamples] = useState<any[]>(EXAMPLES);
   const [activeEx, setActiveEx] = useState(0);
@@ -174,16 +228,20 @@ export default function SquaresSortedArray({ onBack }: { onBack?: () => void }) 
     }
   };
   
-  if (activeTab === 'practice') {
+  if (activeTab === 'practice' || activeTab === 'debug') {
     return (
       <VisualizerLayout>
-        <VPHeader title="Squares of a Sorted Array" lcNum="977" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+        <VPHeader hasDebug={true} title="Squares of a Sorted Array" lcNum="977" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
         <PracticeWorkspace 
           problemStatement={PROBLEM_STATEMENT}
           examples={examples}
           constraints={CONSTRAINTS}
-          defaultCodeJava={DEFAULT_JAVA}
-          defaultCodePython={DEFAULT_PYTHON}
+          defaultCodeJava={activeTab === 'debug' ? BUGGY_JAVA_CODE.join('\n') : DEFAULT_JAVA}
+          defaultCodePython={activeTab === 'debug' ? BUGGY_PYTHON_CODE.join('\n') : DEFAULT_PYTHON}
+          buggyLines={activeTab === 'debug' ? [9, 11] : undefined}
+          debugTestCases={activeTab === 'debug' ? DEBUG_TEST_CASES : undefined}
+          debugHints={activeTab === 'debug' ? DEBUG_HINTS : undefined}
+          runButtonText={activeTab === 'debug' ? '🐛 Run Tests' : undefined}
           examplePicker={
             <ExamplePicker 
               examples={examples} 
@@ -212,7 +270,7 @@ export default function SquaresSortedArray({ onBack }: { onBack?: () => void }) 
 
   return (
     <VisualizerLayout>
-      <VPHeader title="Squares of a Sorted Array" lcNum="977" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
+      <VPHeader hasDebug={true} title="Squares of a Sorted Array" lcNum="977" difficulty="Easy" tag="Two Pointers" onBack={onBack} activeTab={activeTab} onTabChange={setActiveTab} />
       
       <div style={{ marginBottom: '24px' }}>
         <ProblemStatement statement={PROBLEM_STATEMENT} examples={examples} constraints={CONSTRAINTS} />
