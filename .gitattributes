@@ -1,0 +1,9 @@
+# Ignore frontend files from GitHub language statistics so it shows as a Java project
+*.tsx linguist-vendored
+*.ts linguist-vendored
+*.js linguist-vendored
+*.cjs linguist-vendored
+*.py linguist-vendored
+*.css linguist-vendored
+package-lock.json linguist-vendored
+package.json linguist-vendored
